@@ -27,9 +27,15 @@ namespace ShredleApi.Controllers
             {
                 var dailyGame = await _supabaseService.GetTodaysDailyGameAsync();
                 
+                // If no daily game exists for today, create one on the fly
                 if (dailyGame == null)
                 {
-                    return NotFound("No daily solo is available for today");
+                    dailyGame = await CreateDailySoloIfMissing();
+                    
+                    if (dailyGame == null)
+                    {
+                        return NotFound("No daily solo is available for today");
+                    }
                 }
 
                 var solo = await _supabaseService.GetSoloByIdAsync(dailyGame.SoloId);
@@ -60,9 +66,15 @@ namespace ShredleApi.Controllers
             {
                 var dailyGame = await _supabaseService.GetTodaysDailyGameAsync();
                 
+                // If no daily game exists, create one
                 if (dailyGame == null)
                 {
-                    return NotFound("No daily solo is available for today");
+                    dailyGame = await CreateDailySoloIfMissing();
+                    
+                    if (dailyGame == null)
+                    {
+                        return NotFound("No daily solo is available for today");
+                    }
                 }
 
                 var solo = await _supabaseService.GetSoloByIdAsync(dailyGame.SoloId);
@@ -160,6 +172,56 @@ namespace ShredleApi.Controllers
             // Remove extra spaces
             normalized = Regex.Replace(normalized, @"\s+", " ").Trim();
             return normalized;
+        }
+
+        private async Task<DailyGame?> CreateDailySoloIfMissing()
+        {
+            try
+            {
+                // Get all solos
+                var allSolos = await _supabaseService.GetSolosAsync();
+                if (allSolos.Count == 0)
+                {
+                    _logger.LogWarning("No solos found in the database to create a daily solo");
+                    return null;
+                }
+                
+                // Get all previous daily games to avoid duplicates
+                var recentDailyGames = await _supabaseService.GetRecentDailyGamesAsync(30); // Last 30 days
+                var recentSoloIds = recentDailyGames.Select(g => g.SoloId).ToHashSet();
+                
+                // Filter out recently used solos
+                var availableSolos = allSolos.Where(s => !recentSoloIds.Contains(s.Id)).ToList();
+                
+                if (availableSolos.Count == 0)
+                {
+                    // If all solos were recently used, just use all solos
+                    _logger.LogInformation("All solos have been used recently, selecting from all solos");
+                    availableSolos = allSolos;
+                }
+                
+                // Select a random solo
+                Random random = new Random();
+                var selectedSolo = availableSolos[random.Next(availableSolos.Count)];
+                
+                // Create new daily game
+                var today = DateTime.UtcNow.Date;
+                var newDailyGame = new DailyGame
+                {
+                    Date = today,
+                    SoloId = selectedSolo.Id
+                };
+                
+                _logger.LogInformation($"Creating new daily solo: {selectedSolo.Title} by {selectedSolo.Artist} for {today.ToShortDateString()}");
+                
+                // Save to database
+                return await _supabaseService.CreateDailyGameAsync(newDailyGame);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating daily solo on the fly");
+                return null;
+            }
         }
     }
 }
