@@ -9,14 +9,16 @@ namespace ShredleApi.Services
         private readonly HttpClient _httpClient;
         private readonly string _supabaseUrl;
         private readonly string _supabaseKey;
+        private readonly ILogger<SupabaseService> _logger;
 
-        public SupabaseService(IConfiguration configuration)
+        public SupabaseService(IConfiguration configuration, ILogger<SupabaseService> logger)
         {
             _supabaseUrl = configuration["Supabase:Url"]!;
             _supabaseKey = configuration["Supabase:Key"]!;
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("apikey", _supabaseKey);
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_supabaseKey}");
+            _logger = logger;
         }
 
         public async Task<List<Solo>> GetSolosAsync()
@@ -27,17 +29,25 @@ namespace ShredleApi.Services
                 return new List<Solo>();
 
             var content = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation($"Retrieved solos: {content}");
             return JsonSerializer.Deserialize<List<Solo>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true }) ?? new List<Solo>();
         }
 
         public async Task<Solo?> GetSoloByIdAsync(int id)
         {
+            // Use lowercase 'id' in the query parameter to match the database column name
+            _logger.LogInformation($"Fetching solo with id={id}");
             var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
 
             if (!response.IsSuccessStatusCode)
+            {
+                _logger.LogWarning($"Failed to get solo with ID {id}: {response.StatusCode}");
                 return null;
+            }
 
             var content = await response.Content.ReadAsStringAsync();
+            _logger.LogInformation($"Solo response content: {content}");
+            
             var solos = JsonSerializer.Deserialize<List<Solo>>(content, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             return solos?.FirstOrDefault();
         }
