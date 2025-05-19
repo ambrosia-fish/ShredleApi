@@ -11,12 +11,17 @@ namespace ShredleApi.Controllers
     public class GameController : ControllerBase
     {
         private readonly SupabaseService _supabaseService;
+        private readonly OpenAiService _openAiService;
         private readonly ILogger<GameController> _logger;
         private const int MaxGuesses = 4;
 
-        public GameController(SupabaseService supabaseService, ILogger<GameController> logger)
+        public GameController(
+            SupabaseService supabaseService, 
+            OpenAiService openAiService,
+            ILogger<GameController> logger)
         {
             _supabaseService = supabaseService;
+            _openAiService = openAiService;
             _logger = logger;
         }
 
@@ -86,9 +91,10 @@ namespace ShredleApi.Controllers
 
                 int currentGuessCount = previousGuessCount + 1;
                 
-                // Check if the guess is correct (case insensitive, ignore punctuation)
-                bool isCorrect = NormalizeForComparison(request.SongGuess) == 
-                                 NormalizeForComparison(solo.Title);
+                // Check if the guess is correct using AI-powered comparison
+                _logger.LogInformation($"Checking guess: '{request.SongGuess}' against correct title: '{solo.Title}'");
+                bool isCorrect = await _openAiService.CheckGuessCorrectness(request.SongGuess, solo.Title, solo.Artist);
+                _logger.LogInformation($"Guess result: {(isCorrect ? "Correct" : "Incorrect")}");
 
                 return Ok(CreateGameStateResponse(dailyGame, solo, currentGuessCount, isCorrect));
             }
@@ -162,6 +168,7 @@ namespace ShredleApi.Controllers
             };
         }
 
+        // Keep this for fallback but it's no longer used as the primary comparison method
         private string NormalizeForComparison(string input)
         {
             if (string.IsNullOrEmpty(input))
