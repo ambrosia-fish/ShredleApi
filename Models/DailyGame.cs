@@ -1,9 +1,16 @@
-namespace ShredleApi.Models;
+using System.Text.Json.Serialization;
 
-public class DailyGame
+namespace ShredleApi.Models
 {
-    public int Id { get; set; }
-    public DateTime Date { get; set; }
-    public int SoloId { get; set; }
-    public Solo? Solo { get; set; }
+    public class DailyGame
+    {
+        public int Id { get; set; }
+        
+        public DateTime Date { get; set; }
+        
+        public int? SoloId { get; set; }
+        
+        [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+        public Solo? Solo { get; set; }
+    }
 }
