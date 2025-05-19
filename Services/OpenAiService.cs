@@ -6,19 +6,32 @@ namespace ShredleApi.Services
     public class OpenAiService
     {
         private readonly HttpClient _httpClient;
-        private readonly string _apiKey;
+        private readonly string? _apiKey;
         private readonly ILogger<OpenAiService> _logger;
 
         public OpenAiService(IConfiguration configuration, ILogger<OpenAiService> logger)
         {
-            _apiKey = configuration["OpenAI:ApiKey"] ?? throw new ArgumentNullException("OpenAI API key not found in configuration");
+            // Make API key optional for development
+            _apiKey = configuration["OpenAI:ApiKey"];
             _httpClient = new HttpClient();
-            _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+            
+            if (!string.IsNullOrEmpty(_apiKey))
+            {
+                _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+            }
+            
             _logger = logger;
         }
 
         public async Task<string> GenerateHint(string songTitle, string artistName, string guitarist)
         {
+            // For development, return hardcoded hints if no API key
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                _logger.LogInformation("No OpenAI API key provided, returning hardcoded hint");
+                return GetHardcodedHint(songTitle);
+            }
+            
             try
             {
                 var prompt = $"Generate a clever hint about the song '{songTitle}' by {artistName}, featuring guitar work by {guitarist}. " +
@@ -61,6 +74,17 @@ namespace ShredleApi.Services
                 _logger.LogError(ex, "Error generating hint with OpenAI");
                 return "This track features a memorable guitar part that has influenced many musicians.";
             }
+        }
+        
+        private string GetHardcodedHint(string songTitle)
+        {
+            // Return hardcoded hints for our test songs
+            return songTitle.ToLower() switch
+            {
+                "stairway to heaven" => "Broken Escalator to Hell",
+                "while my guitar gently weeps" => "During the Crying of my Axe",
+                _ => "This iconic track features one of the most recognizable guitar solos in rock history."
+            };
         }
     }
 }
