@@ -19,49 +19,28 @@ namespace ShredleApi.Services
             _httpClient.DefaultRequestHeaders.Add("apikey", _supabaseKey);
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_supabaseKey}");
             _logger = logger;
-            
-            _logger.LogInformation($"SupabaseService initialized with URL: {_supabaseUrl}");
         }
 
+        /// <summary>
+        /// Get all solos from the database
+        /// </summary>
         public async Task<List<Solo>> GetSolosAsync()
         {
             try 
             {
-                _logger.LogInformation("Attempting to fetch all solos...");
-                var url = $"{_supabaseUrl}/rest/v1/solos?select=*";
-                _logger.LogInformation($"Request URL: {url}");
-                
-                var response = await _httpClient.GetAsync(url);
-
-                _logger.LogInformation($"Response status: {response.StatusCode}");
+                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?select=*");
                 
                 if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogError($"Failed to get solos: {response.StatusCode}");
-                    _logger.LogError($"Response content: {await response.Content.ReadAsStringAsync()}");
                     return new List<Solo>();
-                }
 
                 var content = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation($"Response content: {content}");
-                
-                // For debugging, print the exact content
-                if (string.IsNullOrEmpty(content) || content == "[]")
-                {
-                    _logger.LogWarning("No solos found in database - empty response");
-                    return new List<Solo>();
-                }
                 
                 var options = new JsonSerializerOptions 
                 { 
-                    PropertyNameCaseInsensitive = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
+                    PropertyNameCaseInsensitive = true
                 };
                 
-                var solos = JsonSerializer.Deserialize<List<Solo>>(content, options) ?? new List<Solo>();
-                _logger.LogInformation($"Successfully deserialized {solos.Count} solos");
-                
-                return solos;
+                return JsonSerializer.Deserialize<List<Solo>>(content, options) ?? new List<Solo>();
             }
             catch (Exception ex)
             {
@@ -70,55 +49,39 @@ namespace ShredleApi.Services
             }
         }
 
+        /// <summary>
+        /// Get a solo by ID, with fallback to hardcoded data for testing
+        /// </summary>
         public async Task<Solo?> GetSoloByIdAsync(int id)
         {
             try {
-                _logger.LogInformation($"Fetching solo with ID {id}");
-                var url = $"{_supabaseUrl}/rest/v1/solos?id=eq.{id}";
-                _logger.LogInformation($"Request URL: {url}");
-                
-                var response = await _httpClient.GetAsync(url);
-                
-                _logger.LogInformation($"Response status: {response.StatusCode}");
+                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
                 
                 if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogError($"Failed to get solo: {response.StatusCode}");
-                    // Fallback to hardcoded solos for testing
                     return GetHardcodedSolo(id);
-                }
                 
                 var content = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation($"Response content: {content}");
                 
                 if (string.IsNullOrEmpty(content) || content == "[]")
-                {
-                    _logger.LogWarning($"No solo found with ID {id} - empty response");
-                    // Fallback to hardcoded solos for testing
                     return GetHardcodedSolo(id);
-                }
                 
-                var options = new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true,
-                    PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-                };
-                
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var solos = JsonSerializer.Deserialize<List<Solo>>(content, options);
+                
                 return solos?.FirstOrDefault() ?? GetHardcodedSolo(id);
             }
             catch (Exception ex)
             {
                 _logger.LogError(ex, $"Error finding solo with ID {id}");
-                // Fallback to hardcoded solos for testing
                 return GetHardcodedSolo(id);
             }
         }
         
+        /// <summary>
+        /// Provides hardcoded solo data for testing
+        /// </summary>
         private Solo? GetHardcodedSolo(int id)
         {
-            _logger.LogWarning($"Using hardcoded solo data for ID {id}");
-            
             if (id == 1)
             {
                 return new Solo
@@ -149,280 +112,222 @@ namespace ShredleApi.Services
             return null;
         }
 
+        /// <summary>
+        /// Get the daily game for a specific date
+        /// </summary>
         public async Task<DailyGame?> GetDailyGameAsync(DateTime date)
         {
             var formattedDate = date.ToString("yyyy-MM-dd");
-            _logger.LogInformation($"Getting daily game for date: {formattedDate}");
             
-            // Try different approaches to access the table to figure out what works
             try
             {
-                // First, let's try to get table structure
-                var metaUrl = $"{_supabaseUrl}/rest/v1/";
-                _logger.LogInformation($"Getting table info: {metaUrl}");
-                var metaResponse = await _httpClient.GetAsync(metaUrl);
-                _logger.LogInformation($"Meta response status: {metaResponse.StatusCode}");
-                if (metaResponse.IsSuccessStatusCode)
-                {
-                    var metaContent = await metaResponse.Content.ReadAsStringAsync();
-                    _logger.LogInformation($"Available tables: {metaContent}");
-                }
+                // This is the format that worked in our testing
+                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/DailyGames?Date=eq.{formattedDate}");
+                
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                var content = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                var games = JsonSerializer.Deserialize<List<DailyGame>>(content, options);
+                
+                return games?.FirstOrDefault();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Error querying table structure");
-            }
-            
-            // Based on the screenshot, the actual column name should be "Date" with capital D
-            var url = $"{_supabaseUrl}/rest/v1/DailyGames?Date=eq.{formattedDate}";
-            _logger.LogInformation($"Request URL: {url}");
-            
-            var response = await _httpClient.GetAsync(url);
-            
-            _logger.LogInformation($"Response status: {response.StatusCode}");
-
-            if (!response.IsSuccessStatusCode)
-            {
-                _logger.LogError($"Failed to get daily game: {response.StatusCode}");
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError($"Error content: {errorContent}");
+                _logger.LogError(ex, $"Error getting daily game for date {formattedDate}");
                 return null;
             }
-
-            var content = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation($"Daily game response content: {content}");
-            
-            var options = new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-            
-            var games = JsonSerializer.Deserialize<List<DailyGame>>(content, options);
-            return games?.FirstOrDefault();
         }
 
+        /// <summary>
+        /// Get today's daily game
+        /// </summary>
         public async Task<DailyGame?> GetTodaysDailyGameAsync()
         {
             var todayDate = DateTime.UtcNow.Date;
             return await GetDailyGameAsync(todayDate);
         }
 
+        /// <summary>
+        /// Get recent daily games
+        /// </summary>
         public async Task<List<DailyGame>> GetRecentDailyGamesAsync(int days)
         {
-            // Get daily games from the last 'days' days
             var startDate = DateTime.UtcNow.Date.AddDays(-days);
             var formattedDate = startDate.ToString("yyyy-MM-dd");
             
-            var url = $"{_supabaseUrl}/rest/v1/DailyGames?Date=gte.{formattedDate}&order=Date.desc";
-            _logger.LogInformation($"Request URL: {url}");
-            
-            var response = await _httpClient.GetAsync(url);
-            
-            if (!response.IsSuccessStatusCode)
+            try
             {
-                _logger.LogError($"Failed to get recent daily games: {response.StatusCode}");
+                var response = await _httpClient.GetAsync(
+                    $"{_supabaseUrl}/rest/v1/DailyGames?Date=gte.{formattedDate}&order=Date.desc");
+                
+                if (!response.IsSuccessStatusCode)
+                    return new List<DailyGame>();
+
+                var content = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                
+                return JsonSerializer.Deserialize<List<DailyGame>>(content, options) ?? new List<DailyGame>();
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error retrieving recent daily games");
                 return new List<DailyGame>();
             }
-
-            var content = await response.Content.ReadAsStringAsync();
-            
-            var options = new JsonSerializerOptions 
-            { 
-                PropertyNameCaseInsensitive = true,
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase
-            };
-            
-            return JsonSerializer.Deserialize<List<DailyGame>>(content, options) ?? new List<DailyGame>();
         }
 
+        /// <summary>
+        /// Create a new daily game
+        /// </summary>
         public async Task<DailyGame?> CreateDailyGameAsync(DailyGame dailyGame)
         {
-            // Let's try using the PascalCase column names to match what we see in the screenshot
-            var options = new JsonSerializerOptions 
-            { 
-                WriteIndented = true
-            };
-            
-            // Let's try to create a game with several variants to see what works
-            _logger.LogInformation("Trying multiple approaches to create a daily game");
-            
-            // Define the different variants to try
-            var attempt1 = new Dictionary<string, object> 
-            { 
-                { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "SoloId", dailyGame.SoloId }
-            };
-            
-            var attempt2 = new Dictionary<string, object> 
-            { 
-                { "date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "soloid", dailyGame.SoloId }
-            };
-            
-            var attempt3 = new Dictionary<string, object> 
-            { 
-                { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "soloid", dailyGame.SoloId }
-            };
-            
-            var attempt4 = new Dictionary<string, object> 
-            { 
-                { "date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "SoloId", dailyGame.SoloId }
-            };
-            
-            var attempt5 = new Dictionary<string, object> 
-            { 
-                { "DATE", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "SOLOID", dailyGame.SoloId }
-            };
-            
-            var attempts = new[] { attempt1, attempt2, attempt3, attempt4, attempt5 };
-            
-            var url = $"{_supabaseUrl}/rest/v1/DailyGames";
-            
-            // First check if the table exists
-            var tableCheckUrl = $"{_supabaseUrl}/rest/v1/DailyGames?limit=1";
-            var tableCheckResponse = await _httpClient.GetAsync(tableCheckUrl);
-            _logger.LogInformation($"Table check response status: {tableCheckResponse.StatusCode}");
-            
-            if (!tableCheckResponse.IsSuccessStatusCode)
+            try
             {
-                _logger.LogError("Table DailyGames may not exist or is not accessible");
-                var tableCheckContent = await tableCheckResponse.Content.ReadAsStringAsync();
-                _logger.LogError($"Table check error: {tableCheckContent}");
-            }
-            
-            // Try each attempt
-            foreach (var attempt in attempts)
-            {
-                try
-                {
-                    var json = JsonSerializer.Serialize(attempt, options);
-                    var content = new StringContent(json, Encoding.UTF8, "application/json");
-                    _logger.LogInformation($"Trying with: {json}");
-                    
-                    var response = await _httpClient.PostAsync(url, content);
-                    _logger.LogInformation($"Response: {response.StatusCode}");
-                    
-                    var responseContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogInformation($"Response content: {responseContent}");
-                    
-                    if (response.IsSuccessStatusCode)
-                    {
-                        _logger.LogInformation($"Success with: {json}");
-                        return JsonSerializer.Deserialize<DailyGame>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Error during attempt");
-                }
-            }
-            
-            _logger.LogError("All attempts to create daily game failed");
-            return null;
-        }
-
-        public async Task<bool> UpdateDailyGameAsync(DailyGame dailyGame)
-        {
-            // Try with PascalCase column names
-            var rawJson = new
-            {
-                Date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                SoloId = dailyGame.SoloId
-            };
-            
-            var json = JsonSerializer.Serialize(rawJson);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
-            
-            _logger.LogInformation($"Updating daily game ID {dailyGame.Id} with raw JSON: {json}");
-
-            var url = $"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{dailyGame.Id}";
-            _logger.LogInformation($"Request URL: {url}");
-            
-            var response = await _httpClient.PatchAsync(url, content);
-            
-            _logger.LogInformation($"Update daily game response status: {response.StatusCode}");
-            
-            if (!response.IsSuccessStatusCode)
-            {
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError($"Error updating daily game: {errorContent}");
-                
-                // Try alternate casing
-                var alternateJson = new
-                {
-                    date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                    soloid = dailyGame.SoloId
+                // Based on our testing, this format works with Supabase
+                var data = new Dictionary<string, object> 
+                { 
+                    { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
+                    { "SoloId", dailyGame.SoloId }
                 };
                 
-                var alternateContent = new StringContent(
-                    JsonSerializer.Serialize(alternateJson), 
-                    Encoding.UTF8, 
-                    "application/json");
+                var json = JsonSerializer.Serialize(data);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
                 
-                var alternateUrl = $"{_supabaseUrl}/rest/v1/DailyGames?id=eq.{dailyGame.Id}";
-                _logger.LogInformation($"Alternate URL: {alternateUrl} with JSON: {JsonSerializer.Serialize(alternateJson)}");
+                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/DailyGames", content);
                 
-                var alternateResponse = await _httpClient.PatchAsync(alternateUrl, alternateContent);
-                _logger.LogInformation($"Alternate response status: {alternateResponse.StatusCode}");
-                
-                return alternateResponse.IsSuccessStatusCode;
-            }
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Failed to create daily game: {response.StatusCode}, error: {errorContent}");
+                    return null;
+                }
 
-            return response.IsSuccessStatusCode;
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                
+                return JsonSerializer.Deserialize<DailyGame>(responseContent, options);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating daily game");
+                return null;
+            }
         }
 
+        /// <summary>
+        /// Update an existing daily game
+        /// </summary>
+        public async Task<bool> UpdateDailyGameAsync(DailyGame dailyGame)
+        {
+            try
+            {
+                var data = new Dictionary<string, object> 
+                { 
+                    { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
+                    { "SoloId", dailyGame.SoloId }
+                };
+                
+                var json = JsonSerializer.Serialize(data);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
+                
+                var response = await _httpClient.PatchAsync($"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{dailyGame.Id}", content);
+                
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogError($"Error updating daily game: {errorContent}");
+                }
+
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating daily game ID {dailyGame.Id}");
+                return false;
+            }
+        }
+
+        /// <summary>
+        /// Create a new solo
+        /// </summary>
         public async Task<Solo?> CreateSoloAsync(Solo solo)
         {
-            var options = new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true
-            };
-            
-            var json = JsonSerializer.Serialize(solo, options);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            try
+            {
+                var json = JsonSerializer.Serialize(solo);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/solos", content);
+                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/solos", content);
 
-            if (!response.IsSuccessStatusCode)
+                if (!response.IsSuccessStatusCode)
+                    return null;
+
+                var responseContent = await response.Content.ReadAsStringAsync();
+                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+                
+                return JsonSerializer.Deserialize<Solo>(responseContent, options);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating solo");
                 return null;
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-            return JsonSerializer.Deserialize<Solo>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            }
         }
 
+        /// <summary>
+        /// Update an existing solo
+        /// </summary>
         public async Task<bool> UpdateSoloAsync(Solo solo)
         {
-            var options = new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
-                WriteIndented = true
-            };
-            
-            var json = JsonSerializer.Serialize(solo, options);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            try
+            {
+                var json = JsonSerializer.Serialize(solo);
+                var content = new StringContent(json, Encoding.UTF8, "application/json");
 
-            var response = await _httpClient.PatchAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{solo.Id}", content);
+                var response = await _httpClient.PatchAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{solo.Id}", content);
 
-            return response.IsSuccessStatusCode;
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error updating solo ID {solo.Id}");
+                return false;
+            }
         }
 
+        /// <summary>
+        /// Delete a solo
+        /// </summary>
         public async Task<bool> DeleteSoloAsync(int id)
         {
-            var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
-
-            return response.IsSuccessStatusCode;
+            try
+            {
+                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error deleting solo ID {id}");
+                return false;
+            }
         }
 
+        /// <summary>
+        /// Delete a daily game
+        /// </summary>
         public async Task<bool> DeleteDailyGameAsync(int id)
         {
-            var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{id}");
-
-            return response.IsSuccessStatusCode;
+            try
+            {
+                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{id}");
+                return response.IsSuccessStatusCode;
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error deleting daily game ID {id}");
+                return false;
+            }
         }
     }
 }
