@@ -97,10 +97,11 @@ namespace ShredleApi.Services
                              $"The correct song title is: \"{correctTitle}\" by {artist}\n\n" +
                              "Would you consider the user's guess to be correct?\n\n" +
                              "Rules:\n" +
-                             "1. Accept the guess if it's the same title in any language\n" +
+                             "1. Accept the guess if it's the same title translated to in any language\n" +
                              "2. Accept common variations or abbreviations of the title\n" +
                              "3. Accept if there are minor typos or misspellings\n" +
                              "4. Reject if it's clearly a different song\n\n" +
+                             "e.g. escalera al cielo is acceptable for Stairway to Heaven \n\n" +
                              "Answer with ONLY 'yes' or 'no'.";
 
                 var requestBody = new
