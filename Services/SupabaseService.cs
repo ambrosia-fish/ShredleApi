@@ -28,19 +28,8 @@ namespace ShredleApi.Services
         {
             try 
             {
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?select=*");
-                
-                if (!response.IsSuccessStatusCode)
-                    return new List<Solo>();
-
-                var content = await response.Content.ReadAsStringAsync();
-                
-                var options = new JsonSerializerOptions 
-                { 
-                    PropertyNameCaseInsensitive = true
-                };
-                
-                return JsonSerializer.Deserialize<List<Solo>>(content, options) ?? new List<Solo>();
+                _logger.LogInformation("Getting hardcoded solos list (skipping API call)");
+                return GetHardcodedSolos(); 
             }
             catch (Exception ex)
             {
@@ -54,27 +43,40 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<Solo?> GetSoloByIdAsync(int id)
         {
-            try {
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
-                
-                if (!response.IsSuccessStatusCode)
-                    return GetHardcodedSolo(id);
-                
-                var content = await response.Content.ReadAsStringAsync();
-                
-                if (string.IsNullOrEmpty(content) || content == "[]")
-                    return GetHardcodedSolo(id);
-                
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var solos = JsonSerializer.Deserialize<List<Solo>>(content, options);
-                
-                return solos?.FirstOrDefault() ?? GetHardcodedSolo(id);
-            }
-            catch (Exception ex)
+            _logger.LogInformation($"Getting hardcoded solo {id} (skipping API call)");
+            return GetHardcodedSolo(id);
+        }
+        
+        /// <summary>
+        /// Provides hardcoded solo data list for testing
+        /// </summary>
+        private List<Solo> GetHardcodedSolos()
+        {
+            return new List<Solo> 
             {
-                _logger.LogError(ex, $"Error finding solo with ID {id}");
-                return GetHardcodedSolo(id);
-            }
+                new Solo
+                {
+                    Id = 0,
+                    Title = "While My Guitar Gently Weeps",
+                    Artist = "The Beatles",
+                    SpotifyId = "2EEaNpFdykm5yYlkR3izeE",
+                    SoloStartTimeMs = 220000,
+                    SoloEndTimeMs = 270000,
+                    Guitarist = "Eric Clapton",
+                    AiHint = "During the Crying of my Axe"
+                },
+                new Solo
+                {
+                    Id = 1,
+                    Title = "Stairway to Heaven",
+                    Artist = "Led Zeppelin",
+                    SpotifyId = "5CQ30WqJwcep0pYcV4AMNc", 
+                    SoloStartTimeMs = 334000,
+                    SoloEndTimeMs = 404000,
+                    Guitarist = "Jimmy Page",
+                    AiHint = "Broken Escalator to Hell"
+                }
+            };
         }
         
         /// <summary>
@@ -90,9 +92,10 @@ namespace ShredleApi.Services
                     Title = "Stairway to Heaven",
                     Artist = "Led Zeppelin",
                     SpotifyId = "5CQ30WqJwcep0pYcV4AMNc", 
-                    SoloStartTimeMs = 30000,
-                    SoloEndTimeMs = 90000,
-                    Guitarist = "Jimmy Page"
+                    SoloStartTimeMs = 334000,
+                    SoloEndTimeMs = 404000,
+                    Guitarist = "Jimmy Page",
+                    AiHint = "Broken Escalator to Hell"
                 };
             }
             else if (id == 0)
@@ -103,9 +106,10 @@ namespace ShredleApi.Services
                     Title = "While My Guitar Gently Weeps",
                     Artist = "The Beatles",
                     SpotifyId = "2EEaNpFdykm5yYlkR3izeE",
-                    SoloStartTimeMs = 30000,
-                    SoloEndTimeMs = 90000,
-                    Guitarist = "Eric Clapton"
+                    SoloStartTimeMs = 220000,
+                    SoloEndTimeMs = 270000,
+                    Guitarist = "Eric Clapton",
+                    AiHint = "During the Crying of my Axe"
                 };
             }
             
@@ -113,53 +117,12 @@ namespace ShredleApi.Services
         }
 
         /// <summary>
-        /// Get the daily game for a specific date
+        /// Get the daily game for a specific date - hardcoded for now
         /// </summary>
         public async Task<DailyGame?> GetDailyGameAsync(DateTime date)
         {
-            // Get the start of the day in ISO format
-            var startOfDay = date.ToString("yyyy-MM-dd");
-            
-            _logger.LogInformation($"Looking for daily game on date: {startOfDay}");
-            _logger.LogInformation($"Original date passed: {date}");
-            
-            try
-            {
-                // Use date portion only, with more lenient matching
-                var url = $"{_supabaseUrl}/rest/v1/DailyGames?Date=like.{startOfDay}%";
-                _logger.LogInformation($"Making request to URL: {url}");
-                
-                var response = await _httpClient.GetAsync(url);
-                
-                _logger.LogInformation($"Response status code: {response.StatusCode}");
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    _logger.LogWarning($"Failed to get daily game: {response.StatusCode}");
-                    return null;
-                }
-
-                var content = await response.Content.ReadAsStringAsync();
-                _logger.LogInformation($"Response content: {content}");
-                
-                if (string.IsNullOrEmpty(content) || content == "[]")
-                {
-                    _logger.LogWarning("Response was empty or an empty array");
-                    return null;
-                }
-
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                var games = JsonSerializer.Deserialize<List<DailyGame>>(content, options);
-                
-                _logger.LogInformation($"Deserialized {games?.Count ?? 0} game(s)");
-                
-                return games?.FirstOrDefault();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error getting daily game for date {startOfDay}");
-                return null;
-            }
+            _logger.LogInformation($"Getting hardcoded daily game (skipping API call)");
+            return GetHardcodedDailyGame();
         }
 
         /// <summary>
@@ -167,8 +130,22 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<DailyGame?> GetTodaysDailyGameAsync()
         {
-            var todayDate = DateTime.UtcNow.Date;
-            return await GetDailyGameAsync(todayDate);
+            _logger.LogInformation("Getting hardcoded daily game for today (skipping API call)");
+            return GetHardcodedDailyGame();
+        }
+
+        /// <summary>
+        /// Get a hardcoded daily game for testing
+        /// </summary>
+        private DailyGame GetHardcodedDailyGame()
+        {
+            return new DailyGame
+            {
+                Id = 1,
+                Date = DateTime.UtcNow.Date,
+                SoloId = 1,
+                Solo = GetHardcodedSolo(1)
+            };
         }
 
         /// <summary>
@@ -176,27 +153,8 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<List<DailyGame>> GetRecentDailyGamesAsync(int days)
         {
-            var startDate = DateTime.UtcNow.Date.AddDays(-days);
-            var formattedDate = startDate.ToString("yyyy-MM-dd");
-            
-            try
-            {
-                var response = await _httpClient.GetAsync(
-                    $"{_supabaseUrl}/rest/v1/DailyGames?Date=gte.{formattedDate}&order=Date.desc");
-                
-                if (!response.IsSuccessStatusCode)
-                    return new List<DailyGame>();
-
-                var content = await response.Content.ReadAsStringAsync();
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                
-                return JsonSerializer.Deserialize<List<DailyGame>>(content, options) ?? new List<DailyGame>();
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error retrieving recent daily games");
-                return new List<DailyGame>();
-            }
+            _logger.LogInformation("Getting hardcoded recent daily games (skipping API call)");
+            return new List<DailyGame> { GetHardcodedDailyGame() };
         }
 
         /// <summary>
@@ -204,37 +162,8 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<DailyGame?> CreateDailyGameAsync(DailyGame dailyGame)
         {
-            try
-            {
-                // Based on our testing, this format works with Supabase
-                var data = new Dictionary<string, object> 
-                { 
-                    { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                    { "SoloId", dailyGame.SoloId }
-                };
-                
-                var json = JsonSerializer.Serialize(data);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                
-                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/DailyGames", content);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError($"Failed to create daily game: {response.StatusCode}, error: {errorContent}");
-                    return null;
-                }
-
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                
-                return JsonSerializer.Deserialize<DailyGame>(responseContent, options);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating daily game");
-                return null;
-            }
+            _logger.LogInformation("Creating hardcoded daily game (skipping API call)");
+            return GetHardcodedDailyGame();
         }
 
         /// <summary>
@@ -242,32 +171,8 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<bool> UpdateDailyGameAsync(DailyGame dailyGame)
         {
-            try
-            {
-                var data = new Dictionary<string, object> 
-                { 
-                    { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                    { "SoloId", dailyGame.SoloId }
-                };
-                
-                var json = JsonSerializer.Serialize(data);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-                
-                var response = await _httpClient.PatchAsync($"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{dailyGame.Id}", content);
-                
-                if (!response.IsSuccessStatusCode)
-                {
-                    var errorContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogError($"Error updating daily game: {errorContent}");
-                }
-
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error updating daily game ID {dailyGame.Id}");
-                return false;
-            }
+            _logger.LogInformation("Updating hardcoded daily game (skipping API call)");
+            return true;
         }
 
         /// <summary>
@@ -275,26 +180,8 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<Solo?> CreateSoloAsync(Solo solo)
         {
-            try
-            {
-                var json = JsonSerializer.Serialize(solo);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/solos", content);
-
-                if (!response.IsSuccessStatusCode)
-                    return null;
-
-                var responseContent = await response.Content.ReadAsStringAsync();
-                var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
-                
-                return JsonSerializer.Deserialize<Solo>(responseContent, options);
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, "Error creating solo");
-                return null;
-            }
+            _logger.LogInformation("Creating hardcoded solo (skipping API call)");
+            return GetHardcodedSolo(1);
         }
 
         /// <summary>
@@ -302,20 +189,8 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<bool> UpdateSoloAsync(Solo solo)
         {
-            try
-            {
-                var json = JsonSerializer.Serialize(solo);
-                var content = new StringContent(json, Encoding.UTF8, "application/json");
-
-                var response = await _httpClient.PatchAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{solo.Id}", content);
-
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error updating solo ID {solo.Id}");
-                return false;
-            }
+            _logger.LogInformation("Updating hardcoded solo (skipping API call)");
+            return true;
         }
 
         /// <summary>
@@ -323,16 +198,8 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<bool> DeleteSoloAsync(int id)
         {
-            try
-            {
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error deleting solo ID {id}");
-                return false;
-            }
+            _logger.LogInformation("Deleting hardcoded solo (skipping API call)");
+            return true;
         }
 
         /// <summary>
@@ -340,16 +207,8 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<bool> DeleteDailyGameAsync(int id)
         {
-            try
-            {
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{id}");
-                return response.IsSuccessStatusCode;
-            }
-            catch (Exception ex)
-            {
-                _logger.LogError(ex, $"Error deleting daily game ID {id}");
-                return false;
-            }
+            _logger.LogInformation("Deleting hardcoded daily game (skipping API call)");
+            return true;
         }
     }
 }
