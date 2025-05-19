@@ -18,7 +18,8 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
             "http://localhost:5173",
-            "https://shredle.feztech.io"
+            "https://shredle.feztech.io",
+            "https://8bde-68-0-249-64.ngrok-free.app"
             )
             .AllowAnyMethod()
             .AllowAnyHeader();
