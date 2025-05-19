@@ -154,8 +154,8 @@ namespace ShredleApi.Services
             var formattedDate = date.ToString("yyyy-MM-dd");
             _logger.LogInformation($"Getting daily game for date: {formattedDate}");
             
-            // FIXED: Using "DailyGames" instead of "daily_games" to match your Supabase table name
-            var url = $"{_supabaseUrl}/rest/v1/DailyGames?Date=eq.{formattedDate}";
+            // FIXED: Using "DailyGames" with lowercase column names
+            var url = $"{_supabaseUrl}/rest/v1/DailyGames?date=eq.{formattedDate}";
             _logger.LogInformation($"Request URL: {url}");
             
             var response = await _httpClient.GetAsync(url);
@@ -193,8 +193,8 @@ namespace ShredleApi.Services
             var startDate = DateTime.UtcNow.Date.AddDays(-days);
             var formattedDate = startDate.ToString("yyyy-MM-dd");
             
-            // FIXED: Using "DailyGames" instead of "daily_games" to match your Supabase table name
-            var url = $"{_supabaseUrl}/rest/v1/DailyGames?Date=gte.{formattedDate}&order=Date.desc";
+            // FIXED: Using "DailyGames" with lowercase column names
+            var url = $"{_supabaseUrl}/rest/v1/DailyGames?date=gte.{formattedDate}&order=date.desc";
             _logger.LogInformation($"Request URL: {url}");
             
             var response = await _httpClient.GetAsync(url);
@@ -218,18 +218,19 @@ namespace ShredleApi.Services
 
         public async Task<DailyGame?> CreateDailyGameAsync(DailyGame dailyGame)
         {
-            var options = new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // Use camelCase for property names
-                WriteIndented = true
+            // Create a simple JSON object with the correct casing for Supabase
+            var rawJson = new
+            {
+                date = dailyGame.Date.ToString("yyyy-MM-dd"),
+                soloid = dailyGame.SoloId
             };
             
-            var json = JsonSerializer.Serialize(dailyGame, options);
+            var json = JsonSerializer.Serialize(rawJson);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogInformation($"Creating daily game: {json}");
+            _logger.LogInformation($"Creating daily game with raw JSON: {json}");
 
-            // FIXED: Using "DailyGames" instead of "daily_games" to match your Supabase table name
+            // Using "DailyGames" with lowercase column names
             var url = $"{_supabaseUrl}/rest/v1/DailyGames";
             _logger.LogInformation($"Request URL: {url}");
             
@@ -253,18 +254,19 @@ namespace ShredleApi.Services
 
         public async Task<bool> UpdateDailyGameAsync(DailyGame dailyGame)
         {
-            var options = new JsonSerializerOptions 
-            { 
-                PropertyNamingPolicy = JsonNamingPolicy.CamelCase, // Use camelCase for property names
-                WriteIndented = true
+            // Create a simple JSON object with the correct casing for Supabase
+            var rawJson = new
+            {
+                date = dailyGame.Date.ToString("yyyy-MM-dd"),
+                soloid = dailyGame.SoloId
             };
             
-            var json = JsonSerializer.Serialize(dailyGame, options);
+            var json = JsonSerializer.Serialize(rawJson);
             var content = new StringContent(json, Encoding.UTF8, "application/json");
             
-            _logger.LogInformation($"Updating daily game ID {dailyGame.Id}: {json}");
+            _logger.LogInformation($"Updating daily game ID {dailyGame.Id} with raw JSON: {json}");
 
-            // FIXED: Using "DailyGames" instead of "daily_games" to match your Supabase table name
+            // Using "DailyGames" with lowercase column names
             var url = $"{_supabaseUrl}/rest/v1/DailyGames?id=eq.{dailyGame.Id}";
             _logger.LogInformation($"Request URL: {url}");
             
@@ -326,7 +328,7 @@ namespace ShredleApi.Services
 
         public async Task<bool> DeleteDailyGameAsync(int id)
         {
-            // FIXED: Using "DailyGames" instead of "daily_games" to match your Supabase table name
+            // Using "DailyGames" with lowercase column names
             var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/DailyGames?id=eq.{id}");
 
             return response.IsSuccessStatusCode;
