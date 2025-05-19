@@ -182,60 +182,7 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<DailyGame?> CreateDailyGameAsync(DailyGame dailyGame)
         {
-<<<<<<< Updated upstream
             try
-=======
-            // Let's try using the PascalCase column names to match what we see in the screenshot
-            var options = new JsonSerializerOptions 
-            { 
-                WriteIndented = true
-            };
-            
-            // Let's try to create a game with several variants to see what works
-            _logger.LogInformation("Trying multiple approaches to create a daily game");
-            
-            // Define the different variants to try
-            var attempt1 = new Dictionary<string, object> 
-            { 
-                { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "SoloId", dailyGame.SoloId }
-            };
-            
-            var attempt2 = new Dictionary<string, object> 
-            { 
-                { "date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "soloid", dailyGame.SoloId }
-            };
-            
-            var attempt3 = new Dictionary<string, object> 
-            { 
-                { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "soloid", dailyGame.SoloId }
-            };
-            
-            var attempt4 = new Dictionary<string, object> 
-            { 
-                { "date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "SoloId", dailyGame.SoloId }
-            };
-            
-            var attempt5 = new Dictionary<string, object> 
-            { 
-                { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
-                { "SoloId", dailyGame.SoloId }
-            };
-            
-            var attempts = new[] { attempt1, attempt2, attempt3, attempt4, attempt5 };
-            
-            var url = $"{_supabaseUrl}/rest/v1/DailyGames";
-            
-            // First check if the table exists
-            var tableCheckUrl = $"{_supabaseUrl}/rest/v1/DailyGames?limit=1";
-            var tableCheckResponse = await _httpClient.GetAsync(tableCheckUrl);
-            _logger.LogInformation($"Table check response status: {tableCheckResponse.StatusCode}");
-            
-            if (!tableCheckResponse.IsSuccessStatusCode)
->>>>>>> Stashed changes
             {
                 // Based on our testing, this format works with Supabase
                 var data = new Dictionary<string, object> 
