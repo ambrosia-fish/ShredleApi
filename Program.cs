@@ -1,6 +1,7 @@
 using System.Numerics;
 using Microsoft.EntityFrameworkCore;
 using ShredleApi.Data;
+using ShredleApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -23,6 +24,9 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
+
+builder.Services.AddScoped<SupabaseService>();
+builder.Services.AddScoped<OpenAiService>();
 
 var app = builder.Build();
 
