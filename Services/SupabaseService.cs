@@ -239,109 +239,90 @@ namespace ShredleApi.Services
         public async Task<DailyGame?> CreateDailyGameAsync(DailyGame dailyGame)
         {
             // Let's try using the PascalCase column names to match what we see in the screenshot
-            var rawJson = new
-            {
-                Date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                SoloId = dailyGame.SoloId
+            var options = new JsonSerializerOptions 
+            { 
+                WriteIndented = true
             };
             
-            var json = JsonSerializer.Serialize(rawJson);
-            var content = new StringContent(json, Encoding.UTF8, "application/json");
+            // Let's try to create a game with several variants to see what works
+            _logger.LogInformation("Trying multiple approaches to create a daily game");
             
-            _logger.LogInformation($"Creating daily game with raw JSON: {json}");
-
+            // Define the different variants to try
+            var attempt1 = new Dictionary<string, object> 
+            { 
+                { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
+                { "SoloId", dailyGame.SoloId }
+            };
+            
+            var attempt2 = new Dictionary<string, object> 
+            { 
+                { "date", dailyGame.Date.ToString("yyyy-MM-dd") },
+                { "soloid", dailyGame.SoloId }
+            };
+            
+            var attempt3 = new Dictionary<string, object> 
+            { 
+                { "Date", dailyGame.Date.ToString("yyyy-MM-dd") },
+                { "soloid", dailyGame.SoloId }
+            };
+            
+            var attempt4 = new Dictionary<string, object> 
+            { 
+                { "date", dailyGame.Date.ToString("yyyy-MM-dd") },
+                { "SoloId", dailyGame.SoloId }
+            };
+            
+            var attempt5 = new Dictionary<string, object> 
+            { 
+                { "DATE", dailyGame.Date.ToString("yyyy-MM-dd") },
+                { "SOLOID", dailyGame.SoloId }
+            };
+            
+            var attempts = new[] { attempt1, attempt2, attempt3, attempt4, attempt5 };
+            
             var url = $"{_supabaseUrl}/rest/v1/DailyGames";
-            _logger.LogInformation($"Request URL: {url}");
             
-            // Let's try a different approach - check if the table exists first
+            // First check if the table exists
             var tableCheckUrl = $"{_supabaseUrl}/rest/v1/DailyGames?limit=1";
             var tableCheckResponse = await _httpClient.GetAsync(tableCheckUrl);
             _logger.LogInformation($"Table check response status: {tableCheckResponse.StatusCode}");
             
-            // Now create the daily game
-            var response = await _httpClient.PostAsync(url, content);
-            
-            _logger.LogInformation($"Create daily game response status: {response.StatusCode}");
-
-            if (!response.IsSuccessStatusCode)
+            if (!tableCheckResponse.IsSuccessStatusCode)
             {
-                _logger.LogError($"Failed to create daily game: {response.StatusCode}");
-                var errorContent = await response.Content.ReadAsStringAsync();
-                _logger.LogError($"Error response: {errorContent}");
-                
-                // As a last resort, try alternate casing for column names
-                _logger.LogWarning("Trying alternate column casing...");
-                
-                // Try with lowercase column names
-                var alternateJson = new
-                {
-                    date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                    soloid = dailyGame.SoloId
-                };
-                
-                var alternateContent = new StringContent(
-                    JsonSerializer.Serialize(alternateJson), 
-                    Encoding.UTF8, 
-                    "application/json");
-                
-                _logger.LogInformation($"Retry with alternate JSON: {JsonSerializer.Serialize(alternateJson)}");
-                
-                var alternateResponse = await _httpClient.PostAsync(url, alternateContent);
-                _logger.LogInformation($"Alternate response status: {alternateResponse.StatusCode}");
-                
-                if (alternateResponse.IsSuccessStatusCode)
-                {
-                    var alternateResponseContent = await alternateResponse.Content.ReadAsStringAsync();
-                    _logger.LogInformation($"Alternate create success: {alternateResponseContent}");
-                    return JsonSerializer.Deserialize<DailyGame>(alternateResponseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                }
-                else
-                {
-                    var alternateErrorContent = await alternateResponse.Content.ReadAsStringAsync();
-                    _logger.LogError($"Alternate error response: {alternateErrorContent}");
-                }
-                
-                // Last desperate attempt - try with all possible combinations
-                var attempts = new[]
-                {
-                    new { Date = dailyGame.Date.ToString("yyyy-MM-dd"), SoloId = dailyGame.SoloId },
-                    new { Date = dailyGame.Date.ToString("yyyy-MM-dd"), soloid = dailyGame.SoloId },
-                    new { date = dailyGame.Date.ToString("yyyy-MM-dd"), SoloId = dailyGame.SoloId },
-                    new { date = dailyGame.Date.ToString("yyyy-MM-dd"), soloid = dailyGame.SoloId },
-                    new { DATE = dailyGame.Date.ToString("yyyy-MM-dd"), SOLOID = dailyGame.SoloId },
-                };
-                
-                foreach (var attempt in attempts)
-                {
-                    try
-                    {
-                        var attemptJson = JsonSerializer.Serialize(attempt);
-                        var attemptContent = new StringContent(attemptJson, Encoding.UTF8, "application/json");
-                        _logger.LogInformation($"Trying with: {attemptJson}");
-                        
-                        var attemptResponse = await _httpClient.PostAsync(url, attemptContent);
-                        _logger.LogInformation($"Response: {attemptResponse.StatusCode}");
-                        
-                        if (attemptResponse.IsSuccessStatusCode)
-                        {
-                            var attemptResponseContent = await attemptResponse.Content.ReadAsStringAsync();
-                            _logger.LogInformation($"Success with: {attemptJson}, response: {attemptResponseContent}");
-                            return JsonSerializer.Deserialize<DailyGame>(attemptResponseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogError(ex, "Error during attempt");
-                    }
-                }
-                
-                return null;
+                _logger.LogError("Table DailyGames may not exist or is not accessible");
+                var tableCheckContent = await tableCheckResponse.Content.ReadAsStringAsync();
+                _logger.LogError($"Table check error: {tableCheckContent}");
             }
-
-            var responseContent = await response.Content.ReadAsStringAsync();
-            _logger.LogInformation($"Create daily game response content: {responseContent}");
             
-            return JsonSerializer.Deserialize<DailyGame>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+            // Try each attempt
+            foreach (var attempt in attempts)
+            {
+                try
+                {
+                    var json = JsonSerializer.Serialize(attempt, options);
+                    var content = new StringContent(json, Encoding.UTF8, "application/json");
+                    _logger.LogInformation($"Trying with: {json}");
+                    
+                    var response = await _httpClient.PostAsync(url, content);
+                    _logger.LogInformation($"Response: {response.StatusCode}");
+                    
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    _logger.LogInformation($"Response content: {responseContent}");
+                    
+                    if (response.IsSuccessStatusCode)
+                    {
+                        _logger.LogInformation($"Success with: {json}");
+                        return JsonSerializer.Deserialize<DailyGame>(responseContent, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogError(ex, "Error during attempt");
+                }
+            }
+            
+            _logger.LogError("All attempts to create daily game failed");
+            return null;
         }
 
         public async Task<bool> UpdateDailyGameAsync(DailyGame dailyGame)
