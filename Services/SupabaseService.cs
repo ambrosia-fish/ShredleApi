@@ -117,25 +117,47 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<DailyGame?> GetDailyGameAsync(DateTime date)
         {
-            var formattedDate = date.ToString("yyyy-MM-dd");
+            // Get the start of the day in ISO format
+            var startOfDay = date.ToString("yyyy-MM-dd");
+            
+            _logger.LogInformation($"Looking for daily game on date: {startOfDay}");
+            _logger.LogInformation($"Original date passed: {date}");
             
             try
             {
-                // This is the format that worked in our testing
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/DailyGames?Date=eq.{formattedDate}");
+                // Use date portion only, with more lenient matching
+                var url = $"{_supabaseUrl}/rest/v1/DailyGames?Date=like.{startOfDay}%";
+                _logger.LogInformation($"Making request to URL: {url}");
+                
+                var response = await _httpClient.GetAsync(url);
+                
+                _logger.LogInformation($"Response status code: {response.StatusCode}");
                 
                 if (!response.IsSuccessStatusCode)
+                {
+                    _logger.LogWarning($"Failed to get daily game: {response.StatusCode}");
                     return null;
+                }
 
                 var content = await response.Content.ReadAsStringAsync();
+                _logger.LogInformation($"Response content: {content}");
+                
+                if (string.IsNullOrEmpty(content) || content == "[]")
+                {
+                    _logger.LogWarning("Response was empty or an empty array");
+                    return null;
+                }
+
                 var options = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
                 var games = JsonSerializer.Deserialize<List<DailyGame>>(content, options);
+                
+                _logger.LogInformation($"Deserialized {games?.Count ?? 0} game(s)");
                 
                 return games?.FirstOrDefault();
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error getting daily game for date {formattedDate}");
+                _logger.LogError(ex, $"Error getting daily game for date {startOfDay}");
                 return null;
             }
         }
