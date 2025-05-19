@@ -30,6 +30,73 @@ namespace ShredleApi.Controllers
             string? configAdminKey = _configuration["AdminKey"];
             return !string.IsNullOrEmpty(configAdminKey) && providedKey == configAdminKey;
         }
+
+        // New simple endpoint to set the daily solo by ID
+        [HttpPost("set-daily-solo")]
+        public async Task<IActionResult> SetDailySolo([FromQuery] string adminKey, [FromBody] SetDailySoloRequest request)
+        {
+            if (!ValidateAdminKey(adminKey))
+            {
+                return Unauthorized("Invalid admin key");
+            }
+            
+            try
+            {
+                // Validate request
+                if (request == null || request.SoloId <= 0)
+                {
+                    return BadRequest("Valid SoloId is required");
+                }
+
+                // Check if the solo exists
+                var solo = await _supabaseService.GetSoloByIdAsync(request.SoloId);
+                if (solo == null)
+                {
+                    return NotFound($"Solo with ID {request.SoloId} not found");
+                }
+                
+                // Check if there's already a daily game for today
+                var today = DateTime.UtcNow.Date;
+                var existingDailyGame = await _supabaseService.GetDailyGameAsync(today);
+                
+                if (existingDailyGame != null)
+                {
+                    // Update the existing daily game
+                    existingDailyGame.SoloId = request.SoloId;
+                    var updateSuccess = await _supabaseService.UpdateDailyGameAsync(existingDailyGame);
+                    
+                    if (!updateSuccess)
+                    {
+                        return StatusCode(500, "Failed to update daily game");
+                    }
+                    
+                    return Ok($"Successfully updated daily solo for {today.ToShortDateString()} to '{solo.Title}' by {solo.Artist}");
+                }
+                else
+                {
+                    // Create a new daily game
+                    var newDailyGame = new DailyGame
+                    {
+                        Date = today,
+                        SoloId = request.SoloId
+                    };
+                    
+                    var result = await _supabaseService.CreateDailyGameAsync(newDailyGame);
+                    
+                    if (result == null)
+                    {
+                        return StatusCode(500, "Failed to create daily game");
+                    }
+                    
+                    return Ok($"Successfully set daily solo for {today.ToShortDateString()} to '{solo.Title}' by {solo.Artist}");
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, $"Error setting daily solo ID {request.SoloId}");
+                return StatusCode(500, $"An error occurred while setting the daily solo: {ex.Message}");
+            }
+        }
         
         [HttpPost("update-daily-solo")]
         public async Task<IActionResult> UpdateDailySolo([FromQuery] string adminKey, [FromQuery] int? specificSoloId = null)
@@ -469,5 +536,11 @@ namespace ShredleApi.Controllers
                 return StatusCode(500, "An error occurred while bulk generating hints");
             }
         }
+    }
+
+    // Simple request object for the set-daily-solo endpoint
+    public class SetDailySoloRequest
+    {
+        public int SoloId { get; set; }
     }
 }
