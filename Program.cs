@@ -5,9 +5,10 @@ using ShredleApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Heroku dynamic port - this is critical for Heroku deployment
+// CRITICAL - Force use of PORT environment variable for Heroku
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
-builder.WebHost.UseUrls($"http://*:{port}");
+Console.WriteLine($"Using PORT: {port}");
+builder.WebHost.UseUrls($"http://+:{port}");
 
 // Override configuration with environment variables
 var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL") 
@@ -68,17 +69,9 @@ var redactedConnectionString = connectionString.Contains("Password=")
     : connectionString;
 Console.WriteLine($"Using connection string: {redactedConnectionString}");
 
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
-else 
-{
-    // Enable Swagger in production too for easier debugging
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+// Enable Swagger in all environments for easier debugging
+app.UseSwagger();
+app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 app.UseCors("AllowFrontend");
