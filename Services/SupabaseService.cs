@@ -10,6 +10,7 @@ namespace ShredleApi.Services
         private readonly string _supabaseUrl;
         private readonly string _supabaseKey;
         private readonly ILogger<SupabaseService> _logger;
+        private readonly bool _isServiceRole;
 
         public SupabaseService(IConfiguration configuration, ILogger<SupabaseService> logger)
         {
@@ -27,6 +28,17 @@ namespace ShredleApi.Services
             
             _logger.LogInformation("Supabase service initialized with URL: {Url}", _supabaseUrl);
             _logger.LogInformation("Supabase key length: {KeyLength}", _supabaseKey?.Length ?? 0);
+            
+            // Check if we're using a service role or anon role
+            _isServiceRole = _supabaseKey.Contains("\"role\":\"service_role\"");
+            if (!_isServiceRole)
+            {
+                _logger.LogWarning("CAUTION: Using Supabase with 'anon' role which has limited permissions. Some API operations may fail. Set SUPABASE_KEY environment variable to use service_role for full access.");
+            }
+            else
+            {
+                _logger.LogInformation("Using Supabase with 'service_role' which has full permissions.");
+            }
             
             // Log additional diagnostic information about the URL
             if (!string.IsNullOrEmpty(_supabaseUrl))
@@ -244,6 +256,12 @@ namespace ShredleApi.Services
         {
             try
             {
+                if (!_isServiceRole)
+                {
+                    _logger.LogError("Cannot create daily game - requires service_role permission level. Current role is 'anon'.");
+                    return null;
+                }
+                
                 _logger.LogInformation("Creating daily game for date {Date} with solo ID {SoloId}", 
                     dailyGame.Date.ToShortDateString(), dailyGame.SoloId);
                 
@@ -308,6 +326,12 @@ namespace ShredleApi.Services
         {
             try
             {
+                if (!_isServiceRole)
+                {
+                    _logger.LogError("Cannot update daily game - requires service_role permission level. Current role is 'anon'.");
+                    return false;
+                }
+                
                 _logger.LogInformation("Updating daily game ID {Id} to solo ID {SoloId}", 
                     dailyGame.Id, dailyGame.SoloId);
                 
@@ -354,6 +378,12 @@ namespace ShredleApi.Services
         {
             try
             {
+                if (!_isServiceRole)
+                {
+                    _logger.LogError("Cannot create solo - requires service_role permission level. Current role is 'anon'.");
+                    return null;
+                }
+                
                 _logger.LogInformation("Creating new solo '{Title}' by {Artist}", solo.Title, solo.Artist);
                 
                 // Create JSON payload with PascalCase property names to match database
@@ -415,6 +445,12 @@ namespace ShredleApi.Services
         {
             try
             {
+                if (!_isServiceRole)
+                {
+                    _logger.LogError("Cannot update solo - requires service_role permission level. Current role is 'anon'.");
+                    return false;
+                }
+                
                 _logger.LogInformation("Updating solo {Id}: '{Title}' by {Artist}", solo.Id, solo.Title, solo.Artist);
                 
                 // Create JSON payload with PascalCase property names
@@ -465,6 +501,12 @@ namespace ShredleApi.Services
         {
             try
             {
+                if (!_isServiceRole)
+                {
+                    _logger.LogError("Cannot delete solo - requires service_role permission level. Current role is 'anon'.");
+                    return false;
+                }
+                
                 _logger.LogInformation("Deleting solo {Id}", id);
                 
                 // Send DELETE request to Supabase with PascalCase table and column names
@@ -498,6 +540,12 @@ namespace ShredleApi.Services
         {
             try
             {
+                if (!_isServiceRole)
+                {
+                    _logger.LogError("Cannot delete daily game - requires service_role permission level. Current role is 'anon'.");
+                    return false;
+                }
+                
                 _logger.LogInformation("Deleting daily game {Id}", id);
                 
                 // Send DELETE request to Supabase with PascalCase table and column names
