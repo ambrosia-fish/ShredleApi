@@ -122,21 +122,21 @@ namespace ShredleApi.Controllers
             try
             {
                 // Debug log to help diagnose issues
-                _logger.LogInformation($"Received request to set daily solo with ID: {request?.soloId}");
+                _logger.LogInformation($"Received request to set daily solo with ID: {request?.SoloId}");
                 
                 // Validate request
-                if (request == null || request.soloId <= 0)
+                if (request == null || request.SoloId <= 0)
                 {
-                    _logger.LogWarning($"Invalid solo ID: {request?.soloId}");
-                    return BadRequest("Valid soloId is required");
+                    _logger.LogWarning($"Invalid solo ID: {request?.SoloId}");
+                    return BadRequest("Valid SoloId is required");
                 }
 
                 // Check if the solo exists
-                var solo = await _supabaseService.GetSoloByIdAsync(request.soloId);
+                var solo = await _supabaseService.GetSoloByIdAsync(request.SoloId);
                 if (solo == null)
                 {
-                    _logger.LogWarning($"Solo with ID {request.soloId} not found");
-                    return NotFound($"Solo with ID {request.soloId} not found");
+                    _logger.LogWarning($"Solo with ID {request.SoloId} not found");
+                    return NotFound($"Solo with ID {request.SoloId} not found");
                 }
                 
                 // Check if there's already a daily game for today
@@ -146,12 +146,12 @@ namespace ShredleApi.Controllers
                 if (existingDailyGame != null)
                 {
                     // Update the existing daily game
-                    existingDailyGame.SoloId = request.soloId;
+                    existingDailyGame.SoloId = request.SoloId;
                     var updateSuccess = await _supabaseService.UpdateDailyGameAsync(existingDailyGame);
                     
                     if (!updateSuccess)
                     {
-                        _logger.LogError($"Failed to update daily game to solo ID {request.soloId}");
+                        _logger.LogError($"Failed to update daily game to solo ID {request.SoloId}");
                         return StatusCode(500, "Failed to update daily game");
                     }
                     
@@ -164,14 +164,14 @@ namespace ShredleApi.Controllers
                     var newDailyGame = new DailyGame
                     {
                         Date = today,
-                        SoloId = request.soloId
+                        SoloId = request.SoloId
                     };
                     
                     var result = await _supabaseService.CreateDailyGameAsync(newDailyGame);
                     
                     if (result == null)
                     {
-                        _logger.LogError($"Failed to create daily game with solo ID {request.soloId}");
+                        _logger.LogError($"Failed to create daily game with solo ID {request.SoloId}");
                         return StatusCode(500, "Failed to create daily game");
                     }
                     
@@ -181,7 +181,7 @@ namespace ShredleApi.Controllers
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, $"Error setting daily solo ID {request?.soloId}");
+                _logger.LogError(ex, $"Error setting daily solo ID {request?.SoloId}");
                 return StatusCode(500, $"An error occurred while setting the daily solo: {ex.Message}");
             }
         }
@@ -191,7 +191,7 @@ namespace ShredleApi.Controllers
     // Simple request object for the set-daily-solo endpoint
     public class SetDailySoloRequest
     {
-        // Using lowercase property name to match JSON convention for JavaScript
-        public int soloId { get; set; }
+        // Updated to use PascalCase property name to match database conventions
+        public int SoloId { get; set; }
     }
 }
