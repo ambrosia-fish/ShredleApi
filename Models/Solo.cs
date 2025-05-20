@@ -1,33 +1,32 @@
-using Postgrest.Attributes;
-using Postgrest.Models;
+using System.Text.Json.Serialization;
 
 namespace ShredleApi.Models
 {
-    [Table("Solos")]
-    public class Solo : BaseModel
+    public class Solo
     {
-        [PrimaryKey("id", false)]
+        // Using standard properties without Entity Framework or Postgrest dependencies
+        [JsonPropertyName("id")]
         public int Id { get; set; }
         
-        [Column("title")]
+        [JsonPropertyName("title")]
         public string Title { get; set; } = string.Empty;
         
-        [Column("artist")]
+        [JsonPropertyName("artist")]
         public string Artist { get; set; } = string.Empty;
         
-        [Column("spotify_id")]
+        [JsonPropertyName("spotify_id")]
         public string SpotifyId { get; set; } = string.Empty;
         
-        [Column("solo_start_time_ms")]
+        [JsonPropertyName("solo_start_time_ms")]
         public int SoloStartTimeMs { get; set; }
         
-        [Column("solo_end_time_ms")]
+        [JsonPropertyName("solo_end_time_ms")]
         public int SoloEndTimeMs { get; set; }
         
-        [Column("guitarist")]
+        [JsonPropertyName("guitarist")]
         public string Guitarist { get; set; } = string.Empty;
         
-        [Column("ai_hint")]
+        [JsonPropertyName("ai_hint")]
         public string AiHint { get; set; } = string.Empty;
     }
 }
