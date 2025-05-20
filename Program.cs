@@ -8,7 +8,12 @@ var builder = WebApplication.CreateBuilder(args);
 // CRITICAL - Force use of PORT environment variable for Heroku
 var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
 Console.WriteLine($"Using PORT: {port}");
-builder.WebHost.UseUrls($"http://+:{port}");
+
+// Configure Kestrel to listen on the correct port
+builder.WebHost.ConfigureKestrel(serverOptions =>
+{
+    serverOptions.ListenAnyIP(int.Parse(port));
+});
 
 // Override configuration with environment variables
 var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL") 
