@@ -27,8 +27,22 @@ namespace ShredleApi.Controllers
         
         private bool ValidateAdminKey(string? providedKey)
         {
-            string? configAdminKey = _configuration["AdminKey"];
-            return !string.IsNullOrEmpty(configAdminKey) && providedKey == configAdminKey;
+            // First check environment variable (for Heroku)
+            string? environmentAdminKey = Environment.GetEnvironmentVariable("ADMIN_KEY");
+            
+            // If not found in environment, fall back to configuration (for local development)
+            string? configAdminKey = environmentAdminKey ?? _configuration["AdminKey"];
+            
+            // Log for debugging (don't log the full key in production)
+            _logger.LogInformation($"Admin key source: {(environmentAdminKey != null ? "Environment" : "Configuration")}");
+            
+            // Check if the key is valid
+            bool isValid = !string.IsNullOrEmpty(configAdminKey) && providedKey == configAdminKey;
+            
+            // Log validation result (without revealing the key)
+            _logger.LogInformation($"Admin key validation result: {isValid}");
+            
+            return isValid;
         }
 
         // New simple endpoint to set the daily solo by ID
