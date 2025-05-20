@@ -1,6 +1,3 @@
-using System.Numerics;
-using Microsoft.EntityFrameworkCore;
-using ShredleApi.Data;
 using ShredleApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,8 +42,8 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services.AddDbContext<AppDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+// REMOVED: Entity Framework DbContext registration
+// This simplifies our approach to use just Supabase REST API
 
 // Use CORS configuration from appsettings.json
 builder.Services.AddCors(options =>
@@ -74,12 +71,15 @@ builder.Services.AddScoped<OpenAiService>();
 
 var app = builder.Build();
 
-// Make sure we log the connection string being used (with password redacted)
-var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "No connection string found";
-var redactedConnectionString = connectionString.Contains("Password=") 
-    ? connectionString.Replace(connectionString.Split(new[] { "Password=" }, StringSplitOptions.None)[1].Split(';')[0], "REDACTED") 
-    : connectionString;
-Console.WriteLine($"Using connection string: {redactedConnectionString}");
+// Log Supabase configuration information
+Console.WriteLine($"Supabase URL: {builder.Configuration["Supabase:Url"]}");
+// Don't log the full key, just the length and first few characters
+var key = builder.Configuration["Supabase:Key"] ?? string.Empty;
+Console.WriteLine($"Supabase key length: {key.Length}");
+if (key.Length > 10)
+{
+    Console.WriteLine($"Supabase key starts with: {key.Substring(0, 10)}...");
+}
 
 // Enable Swagger in all environments for easier debugging
 app.UseSwagger();
