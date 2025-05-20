@@ -74,7 +74,7 @@ namespace ShredleApi.Services
         public async Task<Solo?> GetSoloByIdAsync(int? id)
         {
             // Handle null or invalid ID
-            if (!id.HasValue || id.Value < 0)
+            if (!id.HasValue || id.Value <= 0)
             {
                 _logger.LogWarning("Invalid or null solo ID: {Id}", id);
                 return null;
@@ -83,8 +83,9 @@ namespace ShredleApi.Services
             try
             {
                 _logger.LogInformation("Fetching solo with ID {Id} from Supabase", id.Value);
-                // Use 'Id' with capital I
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/Solos?Id=eq.{id.Value}&select=*");
+                
+                // Use lowercase 'id' instead of 'Id' for Supabase REST API
+                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/Solos?id=eq.{id.Value}&select=*");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -119,9 +120,9 @@ namespace ShredleApi.Services
                 string formattedDate = date.ToString("yyyy-MM-dd");
                 _logger.LogInformation("Fetching daily game for date {Date} from Supabase", formattedDate);
                 
-                // Use 'Date' with capital D
+                // Use lowercase 'date' for Supabase REST API
                 var response = await _httpClient.GetAsync(
-                    $"{_supabaseUrl}/rest/v1/DailyGames?Date=eq.{formattedDate}&select=*");
+                    $"{_supabaseUrl}/rest/v1/DailyGames?date=eq.{formattedDate}&select=*");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -137,7 +138,13 @@ namespace ShredleApi.Services
                     // Load the associated solo if available
                     if (game != null && game.SoloId.HasValue)
                     {
+                        _logger.LogInformation("Loading solo with ID {SoloId} for daily game", game.SoloId.Value);
                         game.Solo = await GetSoloByIdAsync(game.SoloId);
+                        
+                        if (game.Solo == null)
+                        {
+                            _logger.LogWarning("Solo with ID {SoloId} not found for daily game", game.SoloId.Value);
+                        }
                     }
                     
                     return game;
@@ -174,9 +181,9 @@ namespace ShredleApi.Services
                 
                 _logger.LogInformation("Fetching daily games since {StartDate} from Supabase", formattedDate);
                 
-                // Use 'Date' with capital D
+                // Use lowercase 'date' for Supabase REST API
                 var response = await _httpClient.GetAsync(
-                    $"{_supabaseUrl}/rest/v1/DailyGames?Date=gte.{formattedDate}&select=*&order=Date.desc");
+                    $"{_supabaseUrl}/rest/v1/DailyGames?date=gte.{formattedDate}&select=*&order=date.desc");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -222,8 +229,8 @@ namespace ShredleApi.Services
                 // Create JSON payload with proper property names matching DB columns
                 var jsonContent = JsonSerializer.Serialize(new
                 {
-                    Date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                    SoloId = dailyGame.SoloId
+                    date = dailyGame.Date.ToString("yyyy-MM-dd"),
+                    solo_id = dailyGame.SoloId
                 });
                 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -280,15 +287,15 @@ namespace ShredleApi.Services
                 // Create JSON payload
                 var jsonContent = JsonSerializer.Serialize(new
                 {
-                    Date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                    SoloId = dailyGame.SoloId
+                    date = dailyGame.Date.ToString("yyyy-MM-dd"),
+                    solo_id = dailyGame.SoloId
                 });
                 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
-                // Send PATCH request to Supabase, use 'Id' with capital I
+                // Send PATCH request to Supabase, use lowercase 'id'
                 var response = await _httpClient.PatchAsync(
-                    $"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{dailyGame.Id}", content);
+                    $"{_supabaseUrl}/rest/v1/DailyGames?id=eq.{dailyGame.Id}", content);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -320,13 +327,13 @@ namespace ShredleApi.Services
                 // Create JSON payload with proper property names matching DB columns
                 var jsonContent = JsonSerializer.Serialize(new
                 {
-                    Title = solo.Title,
-                    Artist = solo.Artist,
-                    SpotifyId = solo.SpotifyId,
-                    SoloStartTimeMs = solo.SoloStartTimeMs,
-                    SoloEndTimeMs = solo.SoloEndTimeMs,
-                    Guitarist = solo.Guitarist,
-                    AiHint = solo.AiHint
+                    title = solo.Title,
+                    artist = solo.Artist,
+                    spotify_id = solo.SpotifyId,
+                    solo_start_time_ms = solo.SoloStartTimeMs,
+                    solo_end_time_ms = solo.SoloEndTimeMs,
+                    guitarist = solo.Guitarist,
+                    ai_hint = solo.AiHint
                 });
                 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
@@ -375,20 +382,20 @@ namespace ShredleApi.Services
                 // Create JSON payload
                 var jsonContent = JsonSerializer.Serialize(new
                 {
-                    Title = solo.Title,
-                    Artist = solo.Artist,
-                    SpotifyId = solo.SpotifyId,
-                    SoloStartTimeMs = solo.SoloStartTimeMs,
-                    SoloEndTimeMs = solo.SoloEndTimeMs,
-                    Guitarist = solo.Guitarist,
-                    AiHint = solo.AiHint
+                    title = solo.Title,
+                    artist = solo.Artist,
+                    spotify_id = solo.SpotifyId,
+                    solo_start_time_ms = solo.SoloStartTimeMs,
+                    solo_end_time_ms = solo.SoloEndTimeMs,
+                    guitarist = solo.Guitarist,
+                    ai_hint = solo.AiHint
                 });
                 
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
-                // Send PATCH request to Supabase, use 'Id' with capital I
+                // Send PATCH request to Supabase, use lowercase 'id'
                 var response = await _httpClient.PatchAsync(
-                    $"{_supabaseUrl}/rest/v1/Solos?Id=eq.{solo.Id}", content);
+                    $"{_supabaseUrl}/rest/v1/Solos?id=eq.{solo.Id}", content);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -417,8 +424,8 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Deleting solo {Id}", id);
                 
-                // Send DELETE request to Supabase, use 'Id' with capital I
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/Solos?Id=eq.{id}");
+                // Send DELETE request to Supabase, use lowercase 'id'
+                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/Solos?id=eq.{id}");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -447,8 +454,8 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Deleting daily game {Id}", id);
                 
-                // Send DELETE request to Supabase, use 'Id' with capital I
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{id}");
+                // Send DELETE request to Supabase, use lowercase 'id'
+                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/DailyGames?id=eq.{id}");
                 
                 if (response.IsSuccessStatusCode)
                 {
