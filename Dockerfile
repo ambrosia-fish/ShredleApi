@@ -14,6 +14,8 @@ FROM mcr.microsoft.com/dotnet/aspnet:8.0
 WORKDIR /app
 COPY --from=build /app .
 
-# Note: We're not setting a default PORT here because Heroku will provide it
-# We'll let our app pick up the PORT env var directly
+# Make the port binding explicit for Heroku
+ENV PORT=8080
+ENV ASPNETCORE_URLS=http://+:${PORT}
+
 CMD dotnet shredle-api.dll
