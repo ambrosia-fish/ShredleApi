@@ -43,7 +43,8 @@ namespace ShredleApi.Services
             try 
             {
                 _logger.LogInformation("Fetching solos from Supabase");
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/Solos?select=*");
+                // Use lowercase table name and select * for all columns
+                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?select=*");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -85,7 +86,7 @@ namespace ShredleApi.Services
                 _logger.LogInformation("Fetching solo with ID {Id} from Supabase", id.Value);
                 
                 // Use lowercase 'id' instead of 'Id' for Supabase REST API
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/Solos?id=eq.{id.Value}&select=*");
+                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?select=*&id=eq.{id.Value}");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -120,9 +121,9 @@ namespace ShredleApi.Services
                 string formattedDate = date.ToString("yyyy-MM-dd");
                 _logger.LogInformation("Fetching daily game for date {Date} from Supabase", formattedDate);
                 
-                // Use lowercase 'date' for Supabase REST API
+                // Use lowercase table name and proper PostgreSQL column names 
                 var response = await _httpClient.GetAsync(
-                    $"{_supabaseUrl}/rest/v1/DailyGames?date=eq.{formattedDate}&select=*");
+                    $"{_supabaseUrl}/rest/v1/daily_games?select=*&date=eq.{formattedDate}");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -181,9 +182,9 @@ namespace ShredleApi.Services
                 
                 _logger.LogInformation("Fetching daily games since {StartDate} from Supabase", formattedDate);
                 
-                // Use lowercase 'date' for Supabase REST API
+                // Use lowercase table and column names for PostgreSQL
                 var response = await _httpClient.GetAsync(
-                    $"{_supabaseUrl}/rest/v1/DailyGames?date=gte.{formattedDate}&select=*&order=date.desc");
+                    $"{_supabaseUrl}/rest/v1/daily_games?select=*&date=gte.{formattedDate}&order=date.desc");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -226,20 +227,21 @@ namespace ShredleApi.Services
                 _logger.LogInformation("Creating daily game for date {Date} with solo ID {SoloId}", 
                     dailyGame.Date.ToShortDateString(), dailyGame.SoloId);
                 
-                // Create JSON payload with proper property names matching DB columns
-                var jsonContent = JsonSerializer.Serialize(new
+                // Ensure we're using snake_case for Postgres/Supabase column names
+                var jsonData = new
                 {
                     date = dailyGame.Date.ToString("yyyy-MM-dd"),
                     solo_id = dailyGame.SoloId
-                });
+                };
                 
+                var jsonContent = JsonSerializer.Serialize(jsonData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
                 // Add the prefer header to return the created record
                 _httpClient.DefaultRequestHeaders.Add("Prefer", "return=representation");
                 
-                // Send POST request to Supabase with correct table name
-                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/DailyGames", content);
+                // Send POST request to Supabase with correct table name (lowercase)
+                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/daily_games", content);
                 
                 // Remove the prefer header after use
                 _httpClient.DefaultRequestHeaders.Remove("Prefer");
@@ -284,18 +286,19 @@ namespace ShredleApi.Services
                 _logger.LogInformation("Updating daily game ID {Id} to solo ID {SoloId}", 
                     dailyGame.Id, dailyGame.SoloId);
                 
-                // Create JSON payload
-                var jsonContent = JsonSerializer.Serialize(new
+                // Create JSON payload with snake_case property names for PostgreSQL
+                var jsonData = new
                 {
                     date = dailyGame.Date.ToString("yyyy-MM-dd"),
                     solo_id = dailyGame.SoloId
-                });
+                };
                 
+                var jsonContent = JsonSerializer.Serialize(jsonData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
-                // Send PATCH request to Supabase, use lowercase 'id'
+                // Send PATCH request to Supabase with lowercase table and column names
                 var response = await _httpClient.PatchAsync(
-                    $"{_supabaseUrl}/rest/v1/DailyGames?id=eq.{dailyGame.Id}", content);
+                    $"{_supabaseUrl}/rest/v1/daily_games?id=eq.{dailyGame.Id}", content);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -324,8 +327,8 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Creating new solo '{Title}' by {Artist}", solo.Title, solo.Artist);
                 
-                // Create JSON payload with proper property names matching DB columns
-                var jsonContent = JsonSerializer.Serialize(new
+                // Create JSON payload with snake_case property names for PostgreSQL
+                var jsonData = new
                 {
                     title = solo.Title,
                     artist = solo.Artist,
@@ -334,15 +337,16 @@ namespace ShredleApi.Services
                     solo_end_time_ms = solo.SoloEndTimeMs,
                     guitarist = solo.Guitarist,
                     ai_hint = solo.AiHint
-                });
+                };
                 
+                var jsonContent = JsonSerializer.Serialize(jsonData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
                 // Add the prefer header to return the created record
                 _httpClient.DefaultRequestHeaders.Add("Prefer", "return=representation");
                 
-                // Send POST request to Supabase
-                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/Solos", content);
+                // Send POST request to Supabase with lowercase table name
+                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/solos", content);
                 
                 // Remove the prefer header after use
                 _httpClient.DefaultRequestHeaders.Remove("Prefer");
@@ -379,8 +383,8 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Updating solo {Id}: '{Title}' by {Artist}", solo.Id, solo.Title, solo.Artist);
                 
-                // Create JSON payload
-                var jsonContent = JsonSerializer.Serialize(new
+                // Create JSON payload with snake_case property names
+                var jsonData = new
                 {
                     title = solo.Title,
                     artist = solo.Artist,
@@ -389,13 +393,14 @@ namespace ShredleApi.Services
                     solo_end_time_ms = solo.SoloEndTimeMs,
                     guitarist = solo.Guitarist,
                     ai_hint = solo.AiHint
-                });
+                };
                 
+                var jsonContent = JsonSerializer.Serialize(jsonData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
-                // Send PATCH request to Supabase, use lowercase 'id'
+                // Send PATCH request to Supabase with lowercase table and column names
                 var response = await _httpClient.PatchAsync(
-                    $"{_supabaseUrl}/rest/v1/Solos?id=eq.{solo.Id}", content);
+                    $"{_supabaseUrl}/rest/v1/solos?id=eq.{solo.Id}", content);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -424,8 +429,8 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Deleting solo {Id}", id);
                 
-                // Send DELETE request to Supabase, use lowercase 'id'
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/Solos?id=eq.{id}");
+                // Send DELETE request to Supabase with lowercase table and column names
+                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -454,8 +459,8 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Deleting daily game {Id}", id);
                 
-                // Send DELETE request to Supabase, use lowercase 'id'
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/DailyGames?id=eq.{id}");
+                // Send DELETE request to Supabase with lowercase table and column names
+                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/daily_games?id=eq.{id}");
                 
                 if (response.IsSuccessStatusCode)
                 {
