@@ -1,1 +1,1 @@
-web: cd ./bin/Release/net8.0/publish && dotnet shredle-api.dll --urls=http://+:$PORT
+web: dotnet shredle-api.dll
