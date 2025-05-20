@@ -45,7 +45,72 @@ namespace ShredleApi.Controllers
             return isValid;
         }
 
-        // New simple endpoint to set the daily solo by ID
+        // Endpoint to create a sample solo for testing
+        [HttpPost("create-sample-solo")]
+        public async Task<IActionResult> CreateSampleSolo([FromQuery] string adminKey)
+        {
+            if (!ValidateAdminKey(adminKey))
+            {
+                return Unauthorized("Invalid admin key");
+            }
+            
+            try
+            {
+                _logger.LogInformation("Creating sample solo for testing");
+                
+                // Create a sample solo
+                var sampleSolo = new Solo
+                {
+                    Title = "Stairway to Heaven",
+                    Artist = "Led Zeppelin",
+                    Guitarist = "Jimmy Page",
+                    SpotifyId = "5CQ30WqJwcep0pYcV4AMNc",
+                    SoloStartTimeMs = 380000,  // 6:20 mark
+                    SoloEndTimeMs = 410000,    // 6:50 mark
+                    AiHint = "This iconic song features one of the most famous guitar solos in rock history."
+                };
+                
+                var createdSolo = await _supabaseService.CreateSoloAsync(sampleSolo);
+                
+                if (createdSolo == null)
+                {
+                    return StatusCode(500, "Failed to create sample solo");
+                }
+                
+                _logger.LogInformation($"Successfully created sample solo with ID {createdSolo.Id}");
+                
+                // Also create a daily game entry for today
+                var today = DateTime.UtcNow.Date;
+                var dailyGame = new DailyGame
+                {
+                    Date = today,
+                    SoloId = createdSolo.Id
+                };
+                
+                var createdGame = await _supabaseService.CreateDailyGameAsync(dailyGame);
+                
+                if (createdGame == null)
+                {
+                    return StatusCode(500, $"Created solo (ID: {createdSolo.Id}) but failed to create daily game");
+                }
+                
+                _logger.LogInformation($"Successfully created daily game for today with solo ID {createdSolo.Id}");
+                
+                return Ok(new
+                {
+                    message = "Successfully created sample solo and daily game",
+                    solo = createdSolo,
+                    dailyGame = createdGame
+                });
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating sample solo");
+                return StatusCode(500, $"An error occurred while creating the sample solo: {ex.Message}");
+            }
+        }
+
+        // Simple endpoint to set the daily solo by ID
         [HttpPost("set-daily-solo")]
         public async Task<IActionResult> SetDailySolo([FromQuery] string adminKey, [FromBody] SetDailySoloRequest request)
         {
