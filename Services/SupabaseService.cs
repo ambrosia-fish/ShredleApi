@@ -13,14 +13,26 @@ namespace ShredleApi.Services
 
         public SupabaseService(IConfiguration configuration, ILogger<SupabaseService> logger)
         {
-            _supabaseUrl = configuration["Supabase:Url"]!;
-            _supabaseKey = configuration["Supabase:Key"]!;
+            // First check environment variables (Heroku)
+            _supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL") 
+                ?? configuration["Supabase:Url"]!;
+                
+            _supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY") 
+                ?? configuration["Supabase:Key"]!;
+                
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("apikey", _supabaseKey);
             _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_supabaseKey}");
             _logger = logger;
             
             _logger.LogInformation("Supabase service initialized with URL: {Url}", _supabaseUrl);
+            _logger.LogInformation("Supabase key length: {KeyLength}", _supabaseKey?.Length ?? 0);
+            
+            // For debugging - log the first few characters of the key (never log full keys)
+            if (!string.IsNullOrEmpty(_supabaseKey) && _supabaseKey.Length > 10)
+            {
+                _logger.LogInformation("Supabase key starts with: {KeyStart}...", _supabaseKey.Substring(0, 10));
+            }
         }
 
         /// <summary>
