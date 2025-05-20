@@ -5,9 +5,38 @@ using ShredleApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Configure Heroku dynamic port
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    builder.WebHost.UseUrls($"http://*:{port}");
+}
+
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+// Override configuration with environment variables
+var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL") 
+    ?? builder.Configuration["Supabase:Url"];
+var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY") 
+    ?? builder.Configuration["Supabase:Key"];
+var openAiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") 
+    ?? builder.Configuration["OpenAI:ApiKey"];
+
+// Update configuration with environment variables
+if (!string.IsNullOrEmpty(supabaseUrl))
+{
+    builder.Configuration["Supabase:Url"] = supabaseUrl;
+}
+if (!string.IsNullOrEmpty(supabaseKey))
+{
+    builder.Configuration["Supabase:Key"] = supabaseKey;
+}
+if (!string.IsNullOrEmpty(openAiKey))
+{
+    builder.Configuration["OpenAI:ApiKey"] = openAiKey;
+}
 
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
