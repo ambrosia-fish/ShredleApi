@@ -30,26 +30,38 @@ namespace ShredleApi.Controllers
         {
             try
             {
+                _logger.LogInformation("Getting daily solo with guessCount: {GuessCount}", guessCount);
                 var dailyGame = await _supabaseService.GetTodaysDailyGameAsync();
                 
                 // If no daily game exists for today, create one on the fly
                 if (dailyGame == null)
                 {
+                    _logger.LogInformation("No daily game found for today, creating one");
                     dailyGame = await CreateDailySoloIfMissing();
                     
                     if (dailyGame == null)
                     {
+                        _logger.LogWarning("Failed to create daily solo");
                         return NotFound("No daily solo is available for today");
                     }
                 }
 
-                var solo = await _supabaseService.GetSoloByIdAsync(dailyGame.SoloId);
-                
+                // Check if Solo is already loaded
+                if (dailyGame.Solo == null && dailyGame.SoloId.HasValue)
+                {
+                    // If not loaded, try to load it
+                    _logger.LogInformation("Loading solo ID {SoloId} for daily game", dailyGame.SoloId.Value);
+                    dailyGame.Solo = await _supabaseService.GetSoloByIdAsync(dailyGame.SoloId);
+                }
+
+                var solo = dailyGame.Solo;
                 if (solo == null)
                 {
+                    _logger.LogWarning("Solo not found for daily game");
                     return NotFound("Solo not found");
                 }
 
+                _logger.LogInformation("Returning daily solo: '{Title}' by {Artist}", solo.Title, solo.Artist);
                 return Ok(CreateGameStateResponse(dailyGame, solo, guessCount, false));
             }
             catch (Exception ex)
@@ -82,8 +94,13 @@ namespace ShredleApi.Controllers
                     }
                 }
 
-                var solo = await _supabaseService.GetSoloByIdAsync(dailyGame.SoloId);
-                
+                // Ensure Solo is loaded
+                if (dailyGame.Solo == null && dailyGame.SoloId.HasValue)
+                {
+                    dailyGame.Solo = await _supabaseService.GetSoloByIdAsync(dailyGame.SoloId);
+                }
+
+                var solo = dailyGame.Solo;
                 if (solo == null)
                 {
                     return NotFound("Solo not found");
@@ -168,7 +185,7 @@ namespace ShredleApi.Controllers
             };
         }
 
-        // Keep this for fallback but it's no longer used as the primary comparison method
+        // Helper for string normalization if needed
         private string NormalizeForComparison(string input)
         {
             if (string.IsNullOrEmpty(input))
@@ -222,7 +239,15 @@ namespace ShredleApi.Controllers
                 _logger.LogInformation($"Creating new daily solo: {selectedSolo.Title} by {selectedSolo.Artist} for {today.ToShortDateString()}");
                 
                 // Save to database
-                return await _supabaseService.CreateDailyGameAsync(newDailyGame);
+                var createdGame = await _supabaseService.CreateDailyGameAsync(newDailyGame);
+                
+                // Make sure the solo is loaded
+                if (createdGame != null && createdGame.SoloId.HasValue && createdGame.Solo == null)
+                {
+                    createdGame.Solo = selectedSolo; // Use the solo we already have
+                }
+                
+                return createdGame;
             }
             catch (Exception ex)
             {
