@@ -4,13 +4,13 @@ namespace ShredleApi.Models
 {
     public class DailyGame
     {
-        [JsonPropertyName("id")]
+        [JsonPropertyName("Id")]
         public int Id { get; set; }
         
-        [JsonPropertyName("date")]
+        [JsonPropertyName("Date")]
         public DateTime Date { get; set; }
         
-        [JsonPropertyName("solo_id")]
+        [JsonPropertyName("SoloId")]
         public int? SoloId { get; set; }
         
         // This property is not stored in the database, but used for navigation
