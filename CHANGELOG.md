@@ -9,9 +9,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [0.3.0] - 2025-05-20
 ### Fixed
-- Fixed column case sensitivity issues in Supabase queries - The Supabase database tables and columns are using PascalCase naming (Id, Date, Title), but the API was using lowercase in queries, causing "column does not exist" errors
-- Updated SupabaseService.cs to match the correct casing in all API requests
-- Added documentation notes about the naming convention
+- Fixed critical database column casing issues with Supabase API:
+  - Changed model JSON property names from lowercase/snake_case to PascalCase to match the actual database columns
+  - Updated SupabaseService to use PascalCase in all REST API queries
+  - Fixed Supabase URL in appsettings.json
+  - Added extensive logging to help diagnose API issues
+  - Made casing consistent across the entire application
 
 ## [0.2.0] - 2025-05-19
 ### Added
