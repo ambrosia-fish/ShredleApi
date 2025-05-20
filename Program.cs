@@ -48,9 +48,9 @@ builder.Services.AddCors(options =>
     options.AddPolicy("AllowFrontend", policy =>
     {
         policy.WithOrigins(
-            "http://localhost:5173",
-            "https://shredle.feztech.io",
-            "https://8bde-68-0-249-64.ngrok-free.app"
+            "http://localhost:5173",   // Local development
+            "https://shredle.feztech.io", // Production frontend
+            "https://shredle-app.vercel.app" // Vercel deployed app
             )
             .AllowAnyMethod()
             .AllowAnyHeader();
