@@ -48,15 +48,22 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+// Use CORS configuration from appsettings.json
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        policy.WithOrigins(
-            "http://localhost:5173",   // Local development
-            "https://shredle.feztech.io", // Production frontend
-            "https://shredle-app.vercel.app" // Vercel deployed app
-            )
+        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
+            ?? new[] 
+            {
+                "http://localhost:5173",
+                "https://shredle.feztech.io",
+                "https://shredle-app.vercel.app"
+            };
+        
+        Console.WriteLine($"CORS: Configuring allowed origins: {string.Join(", ", allowedOrigins)}");
+        
+        policy.WithOrigins(allowedOrigins)
             .AllowAnyMethod()
             .AllowAnyHeader();
     });
