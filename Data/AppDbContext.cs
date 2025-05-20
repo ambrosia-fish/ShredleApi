@@ -1,14 +1,10 @@
-using Microsoft.EntityFrameworkCore;
-using ShredleApi.Models;
+// This file is kept as a placeholder but is not used anymore
+// The application now uses Supabase REST API for data access
 
 namespace ShredleApi.Data;
 
-public class AppDbContext : DbContext
+// This is a placeholder class to avoid compilation errors in any existing code that might reference it
+public class AppDbContext
 {
-    public AppDbContext(DbContextOptions<AppDbContext> options) : base(options)
-    {
-    }
-
-    public DbSet<Solo> Solos { get; set; } = null!;
-    public DbSet<DailyGame> DailyGames { get; set; } = null!;
+    // Empty class - not used anymore
 }
