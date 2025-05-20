@@ -73,7 +73,20 @@ Console.WriteLine($"Using connection string: {redactedConnectionString}");
 app.UseSwagger();
 app.UseSwaggerUI();
 
-app.UseHttpsRedirection();
+// Add a simple health check endpoint at the root path
+app.MapGet("/", () => 
+{
+    Console.WriteLine("Root endpoint accessed");
+    return "Shredle API is running. Go to /swagger for API documentation.";
+});
+
+// Also add a health check endpoint
+app.MapGet("/health", () => 
+{
+    Console.WriteLine("Health endpoint accessed");
+    return "Healthy";
+});
+
 app.UseCors("AllowFrontend");
 app.UseAuthorization();
 app.MapControllers();
