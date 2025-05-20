@@ -28,6 +28,16 @@ namespace ShredleApi.Services
             _logger.LogInformation("Supabase service initialized with URL: {Url}", _supabaseUrl);
             _logger.LogInformation("Supabase key length: {KeyLength}", _supabaseKey?.Length ?? 0);
             
+            // Log additional diagnostic information about the URL
+            if (!string.IsNullOrEmpty(_supabaseUrl))
+            {
+                // Check if URL ends with a slash
+                if (_supabaseUrl.EndsWith("/"))
+                {
+                    _logger.LogWarning("Supabase URL ends with a slash, which may cause issues with API calls");
+                }
+            }
+            
             // For debugging - log the first few characters of the key (never log full keys)
             if (!string.IsNullOrEmpty(_supabaseKey) && _supabaseKey.Length > 10)
             {
@@ -43,8 +53,11 @@ namespace ShredleApi.Services
             try 
             {
                 _logger.LogInformation("Fetching solos from Supabase");
-                // Use lowercase table name and select * for all columns
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?select=*");
+                // Use proper PascalCase table name to match database
+                string requestUrl = $"{_supabaseUrl}/rest/v1/Solos?select=*";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -85,8 +98,11 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Fetching solo with ID {Id} from Supabase", id.Value);
                 
-                // Use lowercase 'id' instead of 'Id' for Supabase REST API
-                var response = await _httpClient.GetAsync($"{_supabaseUrl}/rest/v1/solos?select=*&id=eq.{id.Value}");
+                // Use PascalCase for table and column names to match database
+                string requestUrl = $"{_supabaseUrl}/rest/v1/Solos?Id=eq.{id.Value}&select=*";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -121,9 +137,11 @@ namespace ShredleApi.Services
                 string formattedDate = date.ToString("yyyy-MM-dd");
                 _logger.LogInformation("Fetching daily game for date {Date} from Supabase", formattedDate);
                 
-                // Use lowercase table name and proper PostgreSQL column names 
-                var response = await _httpClient.GetAsync(
-                    $"{_supabaseUrl}/rest/v1/daily_games?select=*&date=eq.{formattedDate}");
+                // Use PascalCase for table and column names to match database
+                string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames?Date=eq.{formattedDate}&select=*";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -182,9 +200,11 @@ namespace ShredleApi.Services
                 
                 _logger.LogInformation("Fetching daily games since {StartDate} from Supabase", formattedDate);
                 
-                // Use lowercase table and column names for PostgreSQL
-                var response = await _httpClient.GetAsync(
-                    $"{_supabaseUrl}/rest/v1/daily_games?select=*&date=gte.{formattedDate}&order=date.desc");
+                // Use PascalCase for table and column names to match database
+                string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames?Date=gte.{formattedDate}&select=*&order=Date.desc";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -227,21 +247,26 @@ namespace ShredleApi.Services
                 _logger.LogInformation("Creating daily game for date {Date} with solo ID {SoloId}", 
                     dailyGame.Date.ToShortDateString(), dailyGame.SoloId);
                 
-                // Ensure we're using snake_case for Postgres/Supabase column names
+                // Serialize using PascalCase property names to match database columns
                 var jsonData = new
                 {
-                    date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                    solo_id = dailyGame.SoloId
+                    Date = dailyGame.Date.ToString("yyyy-MM-dd"),
+                    SoloId = dailyGame.SoloId
                 };
                 
                 var jsonContent = JsonSerializer.Serialize(jsonData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
+                _logger.LogInformation("Create daily game JSON payload: {Content}", jsonContent);
+                
                 // Add the prefer header to return the created record
                 _httpClient.DefaultRequestHeaders.Add("Prefer", "return=representation");
                 
-                // Send POST request to Supabase with correct table name (lowercase)
-                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/daily_games", content);
+                // Send POST request to Supabase with correct table name (PascalCase)
+                string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.PostAsync(requestUrl, content);
                 
                 // Remove the prefer header after use
                 _httpClient.DefaultRequestHeaders.Remove("Prefer");
@@ -286,19 +311,23 @@ namespace ShredleApi.Services
                 _logger.LogInformation("Updating daily game ID {Id} to solo ID {SoloId}", 
                     dailyGame.Id, dailyGame.SoloId);
                 
-                // Create JSON payload with snake_case property names for PostgreSQL
+                // Create JSON payload with PascalCase property names to match database
                 var jsonData = new
                 {
-                    date = dailyGame.Date.ToString("yyyy-MM-dd"),
-                    solo_id = dailyGame.SoloId
+                    Date = dailyGame.Date.ToString("yyyy-MM-dd"),
+                    SoloId = dailyGame.SoloId
                 };
                 
                 var jsonContent = JsonSerializer.Serialize(jsonData);
+                _logger.LogInformation("Update daily game JSON payload: {Content}", jsonContent);
+                
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
-                // Send PATCH request to Supabase with lowercase table and column names
-                var response = await _httpClient.PatchAsync(
-                    $"{_supabaseUrl}/rest/v1/daily_games?id=eq.{dailyGame.Id}", content);
+                // Send PATCH request to Supabase with PascalCase table and column names
+                string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{dailyGame.Id}";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.PatchAsync(requestUrl, content);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -327,26 +356,31 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Creating new solo '{Title}' by {Artist}", solo.Title, solo.Artist);
                 
-                // Create JSON payload with snake_case property names for PostgreSQL
+                // Create JSON payload with PascalCase property names to match database
                 var jsonData = new
                 {
-                    title = solo.Title,
-                    artist = solo.Artist,
-                    spotify_id = solo.SpotifyId,
-                    solo_start_time_ms = solo.SoloStartTimeMs,
-                    solo_end_time_ms = solo.SoloEndTimeMs,
-                    guitarist = solo.Guitarist,
-                    ai_hint = solo.AiHint
+                    Title = solo.Title,
+                    Artist = solo.Artist,
+                    SpotifyId = solo.SpotifyId,
+                    SoloStartTimeMs = solo.SoloStartTimeMs,
+                    SoloEndTimeMs = solo.SoloEndTimeMs,
+                    Guitarist = solo.Guitarist,
+                    AiHint = solo.AiHint
                 };
                 
                 var jsonContent = JsonSerializer.Serialize(jsonData);
+                _logger.LogInformation("Create solo JSON payload: {Content}", jsonContent);
+                
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
                 // Add the prefer header to return the created record
                 _httpClient.DefaultRequestHeaders.Add("Prefer", "return=representation");
                 
-                // Send POST request to Supabase with lowercase table name
-                var response = await _httpClient.PostAsync($"{_supabaseUrl}/rest/v1/solos", content);
+                // Send POST request to Supabase with PascalCase table name
+                string requestUrl = $"{_supabaseUrl}/rest/v1/Solos";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.PostAsync(requestUrl, content);
                 
                 // Remove the prefer header after use
                 _httpClient.DefaultRequestHeaders.Remove("Prefer");
@@ -383,24 +417,28 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Updating solo {Id}: '{Title}' by {Artist}", solo.Id, solo.Title, solo.Artist);
                 
-                // Create JSON payload with snake_case property names
+                // Create JSON payload with PascalCase property names
                 var jsonData = new
                 {
-                    title = solo.Title,
-                    artist = solo.Artist,
-                    spotify_id = solo.SpotifyId,
-                    solo_start_time_ms = solo.SoloStartTimeMs,
-                    solo_end_time_ms = solo.SoloEndTimeMs,
-                    guitarist = solo.Guitarist,
-                    ai_hint = solo.AiHint
+                    Title = solo.Title,
+                    Artist = solo.Artist,
+                    SpotifyId = solo.SpotifyId,
+                    SoloStartTimeMs = solo.SoloStartTimeMs,
+                    SoloEndTimeMs = solo.SoloEndTimeMs,
+                    Guitarist = solo.Guitarist,
+                    AiHint = solo.AiHint
                 };
                 
                 var jsonContent = JsonSerializer.Serialize(jsonData);
+                _logger.LogInformation("Update solo JSON payload: {Content}", jsonContent);
+                
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
-                // Send PATCH request to Supabase with lowercase table and column names
-                var response = await _httpClient.PatchAsync(
-                    $"{_supabaseUrl}/rest/v1/solos?id=eq.{solo.Id}", content);
+                // Send PATCH request to Supabase with PascalCase table and column names
+                string requestUrl = $"{_supabaseUrl}/rest/v1/Solos?Id=eq.{solo.Id}";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.PatchAsync(requestUrl, content);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -429,8 +467,11 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Deleting solo {Id}", id);
                 
-                // Send DELETE request to Supabase with lowercase table and column names
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/solos?id=eq.{id}");
+                // Send DELETE request to Supabase with PascalCase table and column names
+                string requestUrl = $"{_supabaseUrl}/rest/v1/Solos?Id=eq.{id}";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.DeleteAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
@@ -459,8 +500,11 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Deleting daily game {Id}", id);
                 
-                // Send DELETE request to Supabase with lowercase table and column names
-                var response = await _httpClient.DeleteAsync($"{_supabaseUrl}/rest/v1/daily_games?id=eq.{id}");
+                // Send DELETE request to Supabase with PascalCase table and column names
+                string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames?Id=eq.{id}";
+                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                var response = await _httpClient.DeleteAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
