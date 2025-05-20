@@ -5,16 +5,9 @@ using ShredleApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Configure Heroku dynamic port
-var port = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrEmpty(port))
-{
-    builder.WebHost.UseUrls($"http://*:{port}");
-}
-
-builder.Services.AddControllers();
-builder.Services.AddEndpointsApiExplorer();
-builder.Services.AddSwaggerGen();
+// Configure Heroku dynamic port - this is critical for Heroku deployment
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+builder.WebHost.UseUrls($"http://*:{port}");
 
 // Override configuration with environment variables
 var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL") 
@@ -38,6 +31,14 @@ if (!string.IsNullOrEmpty(openAiKey))
     builder.Configuration["OpenAI:ApiKey"] = openAiKey;
 }
 
+// Add logging for debugging
+builder.Logging.AddConsole();
+builder.Logging.SetMinimumLevel(LogLevel.Information);
+
+builder.Services.AddControllers();
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
 builder.Services.AddDbContext<AppDbContext>(options =>
     options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
@@ -60,8 +61,21 @@ builder.Services.AddScoped<OpenAiService>();
 
 var app = builder.Build();
 
+// Make sure we log the connection string being used (with password redacted)
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection") ?? "No connection string found";
+var redactedConnectionString = connectionString.Contains("Password=") 
+    ? connectionString.Replace(connectionString.Split(new[] { "Password=" }, StringSplitOptions.None)[1].Split(';')[0], "REDACTED") 
+    : connectionString;
+Console.WriteLine($"Using connection string: {redactedConnectionString}");
+
 if (app.Environment.IsDevelopment())
 {
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+else 
+{
+    // Enable Swagger in production too for easier debugging
     app.UseSwagger();
     app.UseSwaggerUI();
 }
