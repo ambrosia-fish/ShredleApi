@@ -19,21 +19,21 @@ public static class EnvironmentHelper
     public static string GetPort()
     {
         // First check for manual port override
-        var manualPort = Environment.GetEnvironmentVariable("APP_PORT");
+        var manualPort = Environment.GetEnvironmentVariable(AppConstants.APP_PORT_ENV_VAR);
         if (!string.IsNullOrEmpty(manualPort))
         {
             return manualPort;
         }
         
         // Check for environment-provided PORT variable
-        var envPort = Environment.GetEnvironmentVariable("PORT");
+        var envPort = Environment.GetEnvironmentVariable(AppConstants.PORT_ENV_VAR);
         if (!string.IsNullOrEmpty(envPort))
         {
             return envPort;
         }
         
-        // Default ports based on environment
-        return "5000"; // Use 5000 as default for all environments
+        // Default port from constants
+        return AppConstants.DEFAULT_PORT;
     }
 
     // Helper to get configuration values with proper precedence:
