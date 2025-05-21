@@ -1,9 +1,18 @@
 using ShredleApi.Services;
+using ShredleApi.Helpers;
 
 var builder = WebApplication.CreateBuilder(args);
 
+// Detect environment and configure accordingly
+var isHeroku = EnvironmentHelper.IsRunningOnHeroku;
+var isDevelopment = EnvironmentHelper.IsDevelopment;
+var environmentName = EnvironmentHelper.EnvironmentName;
+
+// Log the detected environment for debugging
+Console.WriteLine($"Application starting in {environmentName} environment");
+
 // CRITICAL - Force use of PORT environment variable for Heroku
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var port = EnvironmentHelper.GetPort();
 Console.WriteLine($"Using PORT: {port}");
 
 // Configure Kestrel to listen on the correct port
@@ -12,13 +21,21 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(int.Parse(port));
 });
 
-// Override configuration with environment variables
-var supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL") 
-    ?? builder.Configuration["Supabase:Url"];
-var supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY") 
-    ?? builder.Configuration["Supabase:Key"];
-var openAiKey = Environment.GetEnvironmentVariable("OPENAI_API_KEY") 
-    ?? builder.Configuration["OpenAI:ApiKey"];
+// Get API keys with environment-specific fallbacks
+var supabaseUrl = EnvironmentHelper.GetApiKey(
+    builder.Configuration, 
+    "SUPABASE_URL", 
+    "Supabase:Url");
+
+var supabaseKey = EnvironmentHelper.GetApiKey(
+    builder.Configuration, 
+    "SUPABASE_KEY", 
+    "Supabase:Key");
+
+var openAiKey = EnvironmentHelper.GetApiKey(
+    builder.Configuration, 
+    "OPENAI_API_KEY", 
+    "OpenAI:ApiKey");
 
 // Update configuration with environment variables
 if (!string.IsNullOrEmpty(supabaseUrl))
@@ -34,9 +51,20 @@ if (!string.IsNullOrEmpty(openAiKey))
     builder.Configuration["OpenAI:ApiKey"] = openAiKey;
 }
 
-// Add logging for debugging
-builder.Logging.AddConsole();
-builder.Logging.SetMinimumLevel(LogLevel.Information);
+// Add development-specific services and configuration
+if (isDevelopment)
+{
+    Console.WriteLine("Development mode: Using fallback implementations for missing API keys");
+    builder.Logging.AddConsole();
+    builder.Logging.SetMinimumLevel(LogLevel.Debug); // More verbose in development
+}
+else
+{
+    // Production settings
+    Console.WriteLine("Production mode: API keys required for full functionality");
+    builder.Logging.AddConsole();
+    builder.Logging.SetMinimumLevel(LogLevel.Information);
+}
 
 builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
@@ -71,7 +99,8 @@ builder.Services.AddScoped<OpenAiService>();
 
 var app = builder.Build();
 
-// Log Supabase configuration information
+// Log configuration information
+Console.WriteLine($"Environment: {environmentName}");
 Console.WriteLine($"Supabase URL: {builder.Configuration["Supabase:Url"]}");
 // Don't log the full key, just the length and first few characters
 var key = builder.Configuration["Supabase:Key"] ?? string.Empty;
@@ -89,7 +118,7 @@ app.UseSwaggerUI();
 app.MapGet("/", () => 
 {
     Console.WriteLine("Root endpoint accessed");
-    return "Shredle API is running. Go to /swagger for API documentation.";
+    return $"Shredle API is running in {environmentName} mode. Go to /swagger for API documentation.";
 });
 
 // Also add a health check endpoint
