@@ -1,6 +1,5 @@
 using System.Text;
 using System.Text.Json;
-using ShredleApi.Helpers;
 
 namespace ShredleApi.Services
 {
@@ -11,29 +10,36 @@ namespace ShredleApi.Services
         private readonly ILogger<OpenAiService> _logger;
         private readonly bool _isDevelopment;
 
-        public OpenAiService(IConfiguration configuration, ILogger<OpenAiService> logger)
+        public OpenAiService(IConfiguration configuration, ILogger<OpenAiService> logger, IWebHostEnvironment env)
         {
-            _isDevelopment = EnvironmentHelper.IsDevelopment;
+            _isDevelopment = env.IsDevelopment();
+            _logger = logger;
             
-            // Make API key optional for development
+            // Get API key from configuration (User Secrets in dev, Heroku Config in prod)
             _apiKey = configuration["OpenAI:ApiKey"];
-            _httpClient = new HttpClient();
             
+            // Validate API key availability
+            if (string.IsNullOrEmpty(_apiKey))
+            {
+                if (_isDevelopment)
+                {
+                    _logger.LogWarning("Development mode: No OpenAI API key found in User Secrets. Add it with: dotnet user-secrets set \"OpenAI:ApiKey\" \"your-key\"");
+                    _logger.LogWarning("Will use fallback responses for development");
+                }
+                else
+                {
+                    _logger.LogError("Production mode: No OpenAI API key found in environment variables! Add it with: heroku config:set OPENAI__APIKEY=your-key");
+                    _logger.LogError("Real-time hints and guess validation will be unavailable");
+                }
+            }
+            
+            // Initialize HttpClient
+            _httpClient = new HttpClient();
             if (!string.IsNullOrEmpty(_apiKey))
             {
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
                 _logger.LogInformation("OpenAI service initialized with API key");
             }
-            else if (_isDevelopment)
-            {
-                _logger.LogWarning("Development mode: No OpenAI API key provided, will use fallback responses");
-            }
-            else
-            {
-                _logger.LogError("Production mode: No OpenAI API key provided! Real-time hints and guess validation unavailable.");
-            }
-            
-            _logger = logger;
         }
 
         /// <summary>
@@ -41,10 +47,10 @@ namespace ShredleApi.Services
         /// </summary>
         public async Task<string> GenerateHint(string songTitle, string artistName, string guitarist)
         {
-            // For development, return hardcoded hints if no API key
+            // For development without API key, return hardcoded hints
             if (string.IsNullOrEmpty(_apiKey))
             {
-                _logger.LogInformation("No OpenAI API key provided, returning hardcoded hint");
+                _logger.LogInformation("No OpenAI API key available, returning hardcoded hint");
                 return GetHardcodedHint(songTitle);
             }
             
@@ -77,9 +83,10 @@ namespace ShredleApi.Services
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var responseObject = JsonSerializer.Deserialize<JsonElement>(responseContent);
+                var responseObject = JsonSerializer.Deserialize<JsonDocument>(responseContent);
                 
-                return responseObject
+                return responseObject?
+                    .RootElement
                     .GetProperty("choices")[0]
                     .GetProperty("message")
                     .GetProperty("content")
@@ -100,7 +107,7 @@ namespace ShredleApi.Services
             // For development without API key, use basic comparison
             if (string.IsNullOrEmpty(_apiKey))
             {
-                _logger.LogInformation("No OpenAI API key provided, using hardcoded guess checking");
+                _logger.LogInformation("No OpenAI API key available, using hardcoded guess checking");
                 return IsHardcodedGuessCorrect(userGuess, correctTitle);
             }
             
@@ -141,9 +148,10 @@ namespace ShredleApi.Services
                 }
 
                 var responseContent = await response.Content.ReadAsStringAsync();
-                var responseObject = JsonSerializer.Deserialize<JsonElement>(responseContent);
+                var responseObject = JsonSerializer.Deserialize<JsonDocument>(responseContent);
                 
-                var aiResponse = responseObject
+                var aiResponse = responseObject?
+                    .RootElement
                     .GetProperty("choices")[0]
                     .GetProperty("message")
                     .GetProperty("content")
