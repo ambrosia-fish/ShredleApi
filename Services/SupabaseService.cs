@@ -1,6 +1,7 @@
 using System.Text.Json;
 using System.Text;
 using ShredleApi.Models;
+using ShredleApi.Helpers;
 
 namespace ShredleApi.Services
 {
@@ -11,15 +12,15 @@ namespace ShredleApi.Services
         private readonly string _supabaseKey;
         private readonly ILogger<SupabaseService> _logger;
         private readonly bool _isServiceRole;
+        private readonly bool _isDevelopment;
 
         public SupabaseService(IConfiguration configuration, ILogger<SupabaseService> logger)
         {
-            // First check environment variables (Heroku)
-            _supabaseUrl = Environment.GetEnvironmentVariable("SUPABASE_URL") 
-                ?? configuration["Supabase:Url"]!;
-                
-            _supabaseKey = Environment.GetEnvironmentVariable("SUPABASE_KEY") 
-                ?? configuration["Supabase:Key"]!;
+            _isDevelopment = EnvironmentHelper.IsDevelopment;
+            
+            // Get environment settings with appropriate fallbacks
+            _supabaseUrl = configuration["Supabase:Url"]!;
+            _supabaseKey = configuration["Supabase:Key"]!;
                 
             _httpClient = new HttpClient();
             _httpClient.DefaultRequestHeaders.Add("apikey", _supabaseKey);
@@ -55,6 +56,12 @@ namespace ShredleApi.Services
             {
                 _logger.LogInformation("Supabase key starts with: {KeyStart}...", _supabaseKey.Substring(0, 10));
             }
+            
+            // Add development mode message
+            if (_isDevelopment)
+            {
+                _logger.LogInformation("Running in Development mode: Supabase operations will use more verbose logging");
+            }
         }
 
         /// <summary>
@@ -67,14 +74,27 @@ namespace ShredleApi.Services
                 _logger.LogInformation("Fetching solos from Supabase");
                 // Use proper PascalCase table name to match database
                 string requestUrl = $"{_supabaseUrl}/rest/v1/Solos?select=*";
-                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                
+                if (_isDevelopment)
+                {
+                    _logger.LogDebug("Request URL: {Url}", requestUrl);
+                }
                 
                 var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    _logger.LogInformation("Solos response: {Content}", content);
+                    if (_isDevelopment)
+                    {
+                        _logger.LogDebug("Solos response: {Content}", content);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Successfully fetched solos (count: {Count})", 
+                            content.Count(c => c == '{'));
+                    }
+                    
                     var solos = JsonSerializer.Deserialize<List<Solo>>(content, new JsonSerializerOptions 
                     { 
                         PropertyNameCaseInsensitive = true 
@@ -112,14 +132,20 @@ namespace ShredleApi.Services
                 
                 // Use PascalCase for table and column names to match database
                 string requestUrl = $"{_supabaseUrl}/rest/v1/Solos?Id=eq.{id.Value}&select=*";
-                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                if (_isDevelopment)
+                {
+                    _logger.LogDebug("Request URL: {Url}", requestUrl);
+                }
                 
                 var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    _logger.LogInformation("Solo response: {Content}", content);
+                    if (_isDevelopment)
+                    {
+                        _logger.LogDebug("Solo response: {Content}", content);
+                    }
                     var solos = JsonSerializer.Deserialize<List<Solo>>(content, new JsonSerializerOptions 
                     { 
                         PropertyNameCaseInsensitive = true 
@@ -151,14 +177,20 @@ namespace ShredleApi.Services
                 
                 // Use PascalCase for table and column names to match database
                 string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames?Date=eq.{formattedDate}&select=*";
-                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                if (_isDevelopment)
+                {
+                    _logger.LogDebug("Request URL: {Url}", requestUrl);
+                }
                 
                 var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    _logger.LogInformation("Daily game response: {Content}", content);
+                    if (_isDevelopment)
+                    {
+                        _logger.LogDebug("Daily game response: {Content}", content);
+                    }
                     var games = JsonSerializer.Deserialize<List<DailyGame>>(content, new JsonSerializerOptions 
                     { 
                         PropertyNameCaseInsensitive = true 
@@ -214,14 +246,26 @@ namespace ShredleApi.Services
                 
                 // Use PascalCase for table and column names to match database
                 string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames?Date=gte.{formattedDate}&select=*&order=Date.desc";
-                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                if (_isDevelopment)
+                {
+                    _logger.LogDebug("Request URL: {Url}", requestUrl);
+                }
                 
                 var response = await _httpClient.GetAsync(requestUrl);
                 
                 if (response.IsSuccessStatusCode)
                 {
                     var content = await response.Content.ReadAsStringAsync();
-                    _logger.LogInformation("Recent daily games response: {Content}", content);
+                    if (_isDevelopment)
+                    {
+                        _logger.LogDebug("Recent daily games response: {Content}", content);
+                    }
+                    else
+                    {
+                        _logger.LogInformation("Successfully fetched recent daily games (count: {Count})", 
+                            content.Count(c => c == '{'));
+                    }
+                    
                     var games = JsonSerializer.Deserialize<List<DailyGame>>(content, new JsonSerializerOptions 
                     { 
                         PropertyNameCaseInsensitive = true 
@@ -275,14 +319,20 @@ namespace ShredleApi.Services
                 var jsonContent = JsonSerializer.Serialize(jsonData);
                 var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
                 
-                _logger.LogInformation("Create daily game JSON payload: {Content}", jsonContent);
+                if (_isDevelopment)
+                {
+                    _logger.LogDebug("Create daily game JSON payload: {Content}", jsonContent);
+                }
                 
                 // Add the prefer header to return the created record
                 _httpClient.DefaultRequestHeaders.Add("Prefer", "return=representation");
                 
                 // Send POST request to Supabase with correct table name (PascalCase)
                 string requestUrl = $"{_supabaseUrl}/rest/v1/DailyGames";
-                _logger.LogInformation("Request URL: {Url}", requestUrl);
+                if (_isDevelopment)
+                {
+                    _logger.LogDebug("Request URL: {Url}", requestUrl);
+                }
                 
                 var response = await _httpClient.PostAsync(requestUrl, content);
                 
@@ -292,7 +342,10 @@ namespace ShredleApi.Services
                 if (response.IsSuccessStatusCode)
                 {
                     var responseContent = await response.Content.ReadAsStringAsync();
-                    _logger.LogInformation("Create daily game response: {Content}", responseContent);
+                    if (_isDevelopment)
+                    {
+                        _logger.LogDebug("Create daily game response: {Content}", responseContent);
+                    }
                     var createdGames = JsonSerializer.Deserialize<List<DailyGame>>(responseContent, new JsonSerializerOptions 
                     { 
                         PropertyNameCaseInsensitive = true 
