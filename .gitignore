@@ -47,6 +47,12 @@ appsettings.Local.json
 appsettings.*.json
 !appsettings.json
 
+# Environment variable files
+.env
+.env.local
+.env.development
+.env.production
+
 # Database files
 *.mdf
 *.ldf
