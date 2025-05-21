@@ -25,14 +25,15 @@ public static class EnvironmentHelper
             return manualPort;
         }
         
-        // On Heroku, we must use the dynamic PORT env var
-        if (IsRunningOnHeroku)
+        // Check for environment-provided PORT variable
+        var envPort = Environment.GetEnvironmentVariable("PORT");
+        if (!string.IsNullOrEmpty(envPort))
         {
-            return Environment.GetEnvironmentVariable("PORT") ?? "8080";
+            return envPort;
         }
         
-        // For local development, use 5000 instead of 8080 to avoid conflicts
-        return IsDevelopment ? "5000" : "8080";
+        // Default ports based on environment
+        return "5000"; // Use 5000 as default for all environments
     }
 
     // Helper to get configuration values with proper precedence:
