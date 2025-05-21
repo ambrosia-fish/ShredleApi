@@ -11,7 +11,7 @@ var environmentName = EnvironmentHelper.EnvironmentName;
 // Log the detected environment for debugging
 Console.WriteLine($"Application starting in {environmentName} environment");
 
-// Get port from helper (which checks APP_PORT and then uses 5000)
+// Get port from helper (which checks APP_PORT and then uses 5001)
 var port = EnvironmentHelper.GetPort();
 Console.WriteLine($"Using PORT: {port}");
 
@@ -22,11 +22,20 @@ if (!string.IsNullOrEmpty(envPort))
     Console.WriteLine($"WARNING: Found PORT environment variable set to {envPort}");
 }
 
-// Configure Kestrel to listen on the correct port
+// Override Kestrel configuration from appsettings.json with our calculated port
 builder.WebHost.ConfigureKestrel(serverOptions =>
 {
+    // Clear any existing endpoint configurations (important!)
+    serverOptions.ConfigureEndpointDefaults(options => { });
+    
+    // Add only one endpoint with our calculated port
     serverOptions.ListenAnyIP(int.Parse(port));
+    
+    Console.WriteLine($"Configured Kestrel to listen ONLY on port {port}");
 });
+
+// Clear the URLs configuration to avoid conflicting bindings
+builder.WebHost.UseUrls($"http://*:{port}");
 
 // Get configuration values with proper precedence:
 // 1. Environment variables (for Heroku)
