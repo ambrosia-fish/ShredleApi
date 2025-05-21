@@ -11,9 +11,16 @@ var environmentName = EnvironmentHelper.EnvironmentName;
 // Log the detected environment for debugging
 Console.WriteLine($"Application starting in {environmentName} environment");
 
-// CRITICAL - Force use of PORT environment variable for Heroku
+// Get port from helper (which checks APP_PORT and then uses 5000)
 var port = EnvironmentHelper.GetPort();
 Console.WriteLine($"Using PORT: {port}");
+
+// Log any environment variables that might be interfering
+var envPort = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(envPort))
+{
+    Console.WriteLine($"WARNING: Found PORT environment variable set to {envPort}");
+}
 
 // Configure Kestrel to listen on the correct port
 builder.WebHost.ConfigureKestrel(serverOptions =>
@@ -122,7 +129,7 @@ app.UseSwaggerUI();
 app.MapGet("/", () => 
 {
     Console.WriteLine("Root endpoint accessed");
-    return $"Shredle API is running in {environmentName} mode. Go to /swagger for API documentation.";
+    return $"Shredle API is running in {environmentName} mode on port {port}. Go to /swagger for API documentation.";
 });
 
 // Also add a health check endpoint
