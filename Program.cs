@@ -1,7 +1,21 @@
 using ShredleApi.Services;
 using ShredleApi.Helpers;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using System.Net;
 
 var builder = WebApplication.CreateBuilder(args);
+
+// Remove ALL existing configuration
+builder.WebHost.ConfigureAppConfiguration((ctx, config) => {
+    var dict = config.Sources.OfType<Microsoft.Extensions.Configuration.Json.JsonConfigurationSource>()
+        .Where(source => source.Path.EndsWith("appsettings.json") || source.Path.EndsWith("appsettings.Development.json"))
+        .ToList();
+        
+    foreach (var source in dict)
+    {
+        Console.WriteLine($"Removing configuration source: {source.Path}");
+    }
+});
 
 // Detect environment and configure accordingly
 var isHeroku = EnvironmentHelper.IsRunningOnHeroku;
@@ -15,32 +29,22 @@ Console.WriteLine($"Application starting in {environmentName} environment");
 var port = EnvironmentHelper.GetPort();
 Console.WriteLine($"Using PORT: {port}");
 
-// Log any environment variables that might be interfering
-var envPort = Environment.GetEnvironmentVariable("PORT");
-if (!string.IsNullOrEmpty(envPort))
+// COMPLETELY REPLACE KESTREL CONFIGURATION
+builder.WebHost.ConfigureKestrel(options =>
 {
-    Console.WriteLine($"WARNING: Found PORT environment variable set to {envPort}");
-}
-
-// Override Kestrel configuration from appsettings.json with our calculated port
-builder.WebHost.ConfigureKestrel(serverOptions =>
-{
-    // Clear any existing endpoint configurations (important!)
-    serverOptions.ConfigureEndpointDefaults(options => { });
+    Console.WriteLine($"IMPORTANT: Configuring Kestrel to use ONLY port {port}");
     
-    // Add only one endpoint with our calculated port
-    serverOptions.ListenAnyIP(int.Parse(port));
+    // Clear all endpoints
+    options.ListenOptions.Clear();
     
-    Console.WriteLine($"Configured Kestrel to listen ONLY on port {port}");
+    // Add just one endpoint
+    options.Listen(IPAddress.Any, int.Parse(port));
 });
 
-// Clear the URLs configuration to avoid conflicting bindings
+// Explicitly override URLs
 builder.WebHost.UseUrls($"http://*:{port}");
 
-// Get configuration values with proper precedence:
-// 1. Environment variables (for Heroku)
-// 2. User secrets (automatically loaded in development)
-// 3. appsettings.json
+// Get configuration values with proper precedence
 var supabaseUrl = EnvironmentHelper.GetConfigValue(
     builder.Configuration, 
     "SUPABASE_URL", 
@@ -89,21 +93,20 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-// REMOVED: Entity Framework DbContext registration
-// This simplifies our approach to use just Supabase REST API
-
-// Use CORS configuration from appsettings.json
+// Use CORS configuration from appsettings.json or defaults
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-            ?? new[] 
-            {
-                "http://localhost:5173",
-                "https://shredle.feztech.io",
-                "https://shredle-app.vercel.app"
-            };
+        var allowedOrigins = new[] 
+        {
+            "http://localhost:5173",
+            "http://localhost:3000",
+            "https://shredle.feztech.io",
+            "https://shredle-app.vercel.app",
+            "https://shredle-app-git-main-ambrosia-fishs-projects.vercel.app",
+            "https://shredle-app-ambrosia-fishs-projects.vercel.app"
+        };
         
         Console.WriteLine($"CORS: Configuring allowed origins: {string.Join(", ", allowedOrigins)}");
         
