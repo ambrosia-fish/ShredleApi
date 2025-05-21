@@ -13,8 +13,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Added verbose logging in development mode
 - Environment now auto-detects Heroku vs local environments
 - Added example.env file template for local environment variables
-- Documented environment variable system with .NET Secret Manager integration
 - Updated README.md with complete environment setup instructions
+
+### Changed
+- Improved configuration system with clear hierarchy: environment variables → user secrets → appsettings.json
+- Updated EnvironmentHelper to check for configuration values with proper precedence
+- Simplified appsettings.json to use placeholders instead of actual values
+- Streamlined user secrets integration for more secure local development
+- Enhanced README.md with detailed configuration options and hierarchical explanation
 
 ## [0.3.0] - 2025-05-20
 ### Fixed
