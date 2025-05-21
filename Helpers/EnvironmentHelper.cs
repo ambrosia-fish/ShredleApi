@@ -28,30 +28,35 @@ public static class EnvironmentHelper
         return "8080";
     }
 
-    // Helper to get API keys with environment-specific fallbacks
-    public static string GetApiKey(IConfiguration configuration, string keyName, string configPath)
+    // Helper to get configuration values with proper precedence:
+    // 1. Environment variables (for Heroku)
+    // 2. User secrets (automatically loaded into Configuration in development)
+    // 3. appsettings.json
+    public static string GetConfigValue(IConfiguration configuration, string envVarName, string configPath)
     {
-        // First try environment variable
-        var key = Environment.GetEnvironmentVariable(keyName);
+        // First try environment variable (highest priority, for Heroku)
+        var value = Environment.GetEnvironmentVariable(envVarName);
         
-        // If not found, try configuration
-        if (string.IsNullOrEmpty(key))
+        // If not found, value will come from either user secrets or appsettings.json
+        // (user secrets are automatically loaded with higher precedence than appsettings.json)
+        if (string.IsNullOrEmpty(value))
         {
-            key = configuration[configPath];
+            value = configuration[configPath];
         }
 
-        // For development, allow empty keys (will use fallback implementations)
-        if (string.IsNullOrEmpty(key) && IsDevelopment)
+        // For development, allow empty values (will use fallback implementations)
+        if (string.IsNullOrEmpty(value) && IsDevelopment)
         {
+            Console.WriteLine($"Development mode: No {envVarName}/{configPath} found, will use fallback implementation if available");
             return string.Empty;
         }
 
         // For production, log warning if key is missing
-        if (string.IsNullOrEmpty(key) && !IsDevelopment)
+        if (string.IsNullOrEmpty(value) && !IsDevelopment)
         {
-            Console.WriteLine($"WARNING: No {keyName} found in Production environment!");
+            Console.WriteLine($"WARNING: No {envVarName}/{configPath} found in Production environment!");
         }
         
-        return key ?? string.Empty;
+        return value ?? string.Empty;
     }
 }

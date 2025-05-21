@@ -21,23 +21,26 @@ builder.WebHost.ConfigureKestrel(serverOptions =>
     serverOptions.ListenAnyIP(int.Parse(port));
 });
 
-// Get API keys with environment-specific fallbacks
-var supabaseUrl = EnvironmentHelper.GetApiKey(
+// Get configuration values with proper precedence:
+// 1. Environment variables (for Heroku)
+// 2. User secrets (automatically loaded in development)
+// 3. appsettings.json
+var supabaseUrl = EnvironmentHelper.GetConfigValue(
     builder.Configuration, 
     "SUPABASE_URL", 
     "Supabase:Url");
 
-var supabaseKey = EnvironmentHelper.GetApiKey(
+var supabaseKey = EnvironmentHelper.GetConfigValue(
     builder.Configuration, 
     "SUPABASE_KEY", 
     "Supabase:Key");
 
-var openAiKey = EnvironmentHelper.GetApiKey(
+var openAiKey = EnvironmentHelper.GetConfigValue(
     builder.Configuration, 
     "OPENAI_API_KEY", 
     "OpenAI:ApiKey");
 
-// Update configuration with environment variables
+// Update configuration for services to use
 if (!string.IsNullOrEmpty(supabaseUrl))
 {
     builder.Configuration["Supabase:Url"] = supabaseUrl;
@@ -102,6 +105,7 @@ var app = builder.Build();
 // Log configuration information
 Console.WriteLine($"Environment: {environmentName}");
 Console.WriteLine($"Supabase URL: {builder.Configuration["Supabase:Url"]}");
+
 // Don't log the full key, just the length and first few characters
 var key = builder.Configuration["Supabase:Key"] ?? string.Empty;
 Console.WriteLine($"Supabase key length: {key.Length}");
