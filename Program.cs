@@ -34,8 +34,9 @@ builder.WebHost.ConfigureKestrel(options =>
 {
     Console.WriteLine($"IMPORTANT: Configuring Kestrel to use ONLY port {port}");
     
-    // Clear all endpoints
-    options.ListenOptions.Clear();
+    // Clear all endpoints (need to access ListenOptions differently)
+    options.ConfigureEndpointDefaults(listenOptions => { });
+    options.ConfigureHttpsDefaults(listenOptions => { });
     
     // Add just one endpoint
     options.Listen(IPAddress.Any, int.Parse(port));
