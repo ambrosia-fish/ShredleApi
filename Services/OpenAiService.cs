@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using ShredleApi.Helpers;
 
 namespace ShredleApi.Services
 {
@@ -8,9 +9,12 @@ namespace ShredleApi.Services
         private readonly HttpClient _httpClient;
         private readonly string? _apiKey;
         private readonly ILogger<OpenAiService> _logger;
+        private readonly bool _isDevelopment;
 
         public OpenAiService(IConfiguration configuration, ILogger<OpenAiService> logger)
         {
+            _isDevelopment = EnvironmentHelper.IsDevelopment;
+            
             // Make API key optional for development
             _apiKey = configuration["OpenAI:ApiKey"];
             _httpClient = new HttpClient();
@@ -18,6 +22,15 @@ namespace ShredleApi.Services
             if (!string.IsNullOrEmpty(_apiKey))
             {
                 _httpClient.DefaultRequestHeaders.Add("Authorization", $"Bearer {_apiKey}");
+                _logger.LogInformation("OpenAI service initialized with API key");
+            }
+            else if (_isDevelopment)
+            {
+                _logger.LogWarning("Development mode: No OpenAI API key provided, will use fallback responses");
+            }
+            else
+            {
+                _logger.LogError("Production mode: No OpenAI API key provided! Real-time hints and guess validation unavailable.");
             }
             
             _logger = logger;
@@ -152,6 +165,11 @@ namespace ShredleApi.Services
         private string GetHardcodedHint(string songTitle)
         {
             // Return hardcoded hints for our test songs
+            if (_isDevelopment)
+            {
+                _logger.LogInformation($"Development mode: Providing hardcoded hint for '{songTitle}'");
+            }
+            
             return songTitle.ToLower() switch
             {
                 "stairway to heaven" => "Broken Escalator to Hell",
@@ -162,6 +180,11 @@ namespace ShredleApi.Services
         
         private bool IsHardcodedGuessCorrect(string userGuess, string correctTitle)
         {
+            if (_isDevelopment)
+            {
+                _logger.LogInformation($"Development mode: Comparing guess '{userGuess}' with '{correctTitle}'");
+            }
+            
             // Simple normalization for hardcoded checking
             var normalizedGuess = userGuess.Trim().ToLower().Replace(" ", "").Replace("'", "").Replace("-", "");
             var normalizedCorrect = correctTitle.Trim().ToLower().Replace(" ", "").Replace("'", "").Replace("-", "");
