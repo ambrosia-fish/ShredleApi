@@ -1,0 +1,6 @@
+@ShredleApi_HostAddress = http://localhost:5010
+
+GET {{ShredleApi_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
