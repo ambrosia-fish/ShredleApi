@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Created detailed development mode with fallback implementations
 - Added verbose logging in development mode
 - Environment now auto-detects Heroku vs local environments
+- Added example.env file template for local environment variables
+- Documented environment variable system with .NET Secret Manager integration
+- Updated README.md with complete environment setup instructions
 
 ## [0.3.0] - 2025-05-20
 ### Fixed
