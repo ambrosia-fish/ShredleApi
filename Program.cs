@@ -32,7 +32,6 @@ builder.Services.AddCors(options =>
             .AllowAnyHeader();
     });
 });
-This removes the c
 
 // Configure Rate Limiting
 builder.Services.AddMemoryCache();
