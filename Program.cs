@@ -23,7 +23,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ShredlePolicy", policy =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-                           ?? new[] { "https://shredle-app.vercel.app", "http://localhost:5173","https://610c-68-0-249-64.ngrok-free.app" };
+                           ?? new[] { "https://shredle-app.vercel.app", "https://610c-68-0-249-64.ngrok-free.app", "http://localhost:5173" };
         
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
