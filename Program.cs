@@ -23,7 +23,7 @@ builder.Services.AddCors(options =>
     options.AddPolicy("ShredlePolicy", policy =>
     {
         var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-                           ?? new[] { "https://shredle-app.vercel.app", "http://localhost:5173" };
+                           ?? new[] { "https://shredle-app.vercel.app", "http://localhost:5173","https://610c-68-0-249-64.ngrok-free.app" };
         
         policy.WithOrigins(allowedOrigins)
               .AllowAnyMethod()
@@ -61,11 +61,8 @@ builder.Services.AddScoped<GuessValidationService>();
 var app = builder.Build();
 
 // Configure the HTTP request pipeline
-if (app.Environment.IsDevelopment())
-{
-    app.UseSwagger();
-    app.UseSwaggerUI();
-}
+app.UseSwagger();
+app.UseSwaggerUI();
 else
 {
     app.UseHsts();
