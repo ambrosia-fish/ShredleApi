@@ -17,47 +17,23 @@ namespace ShredleApi.Controllers
         }
 
         [HttpGet("daily")]
-        public async Task<ActionResult<object>> GetDailyGame()
+        public async Task<ActionResult<GameResponse>> GetDailyGame()
         {
-            try
+            var game = await _gameService.GetDailyGameAsync();
+            
+            if (game == null)
             {
-                var game = await _gameService.GetDailyGameAsync();
-                
-                if (game == null)
-                {
-                    // Return mock data for testing
-                    return Ok(new {
-                        id = "game_20250522",
-                        date = "2025-05-22T00:00:00Z",
-                        soloId = 123
-                    });
-                }
-
-                var response = new 
-                {
-                    id = game.Id,
-                    date = game.Date,
-                    soloId = game.SoloId
-                };
-
-                return Ok(response);
+                return NotFound("No game available for today");
             }
-            catch (Exception ex)
+
+            var response = new GameResponse
             {
-                // Return mock data if service fails
-                return Ok(new {
-                    id = "game_20250522",
-                    date = "2025-05-22T00:00:00Z",
-                    soloId = 123
-                });
-            }
-        }
+                Id = game.Id,
+                Date = game.Date,
+                SoloId = game.SoloId
+            };
 
-        // Simple health check endpoint
-        [HttpGet("health")]
-        public IActionResult Health()
-        {
-            return Ok(new { status = "healthy", timestamp = DateTime.UtcNow });
+            return Ok(response);
         }
     }
 }
