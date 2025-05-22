@@ -10,10 +10,12 @@ namespace ShredleApi.Controllers
     public class GameController : ControllerBase
     {
         private readonly GameService _gameService;
+        private readonly IConfiguration _configuration;
 
-        public GameController(GameService gameService)
+        public GameController(GameService gameService, IConfiguration configuration)
         {
             _gameService = gameService;
+            _configuration = configuration;
         }
 
         [HttpGet("daily")]
@@ -39,7 +41,12 @@ namespace ShredleApi.Controllers
         [HttpGet("daily-test")]
         public async Task<ActionResult<GameResponse>> GetDailyTestGame([FromQuery] string passcode)
         {
-            var adminKey = Environment.GetEnvironmentVariable("ADMIN_KEY");
+            var adminKey = _configuration["ADMIN_KEY"];
+            
+            // DEBUG: Log the values
+            Console.WriteLine($"Received passcode: '{passcode}'");
+            Console.WriteLine($"Admin key from config: '{adminKey}'");
+            Console.WriteLine($"Are they equal? {passcode == adminKey}");
             
             if (string.IsNullOrEmpty(passcode) || passcode != adminKey)
             {
