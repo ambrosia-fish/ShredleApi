@@ -26,11 +26,19 @@ namespace ShredleApi.Data
         public async Task<Game?> GetTestGameByDateAsync(DateTime date)
         {
             var response = await _supabaseClient
-                .From<Game>("games_test")
+                .From<GameTest>()
                 .Where(g => g.Date == date)
                 .Single();
 
-            return response;
+            // Convert GameTest to Game for consistent return type
+            if (response == null) return null;
+            
+            return new Game
+            {
+                Id = response.Id,
+                Date = response.Date,
+                SoloId = response.SoloId
+            };
         }
 
         public async Task<Solo?> GetSoloByIdAsync(int id)
