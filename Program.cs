@@ -26,7 +26,9 @@ builder.Services.AddCors(options =>
                 "https://shredle-app.vercel.app", 
                 "https://shredle.feztech.io", 
                 "https://ca11-68-0-249-64.ngrok-free.app", 
-                "http://localhost:5173"
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:8080"
             )
             .AllowAnyMethod()
             .AllowAnyHeader();
@@ -91,13 +93,17 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-else
+
+// IMPORTANT: CORS must come BEFORE HTTPS redirect
+app.UseCors("ShredlePolicy");
+
+// Only use HTTPS redirect in production and when we actually have HTTPS configured
+if (!app.Environment.IsDevelopment() && Environment.GetEnvironmentVariable("PORT") == null)
 {
     app.UseHsts();
+    app.UseHttpsRedirection();
 }
 
-app.UseHttpsRedirection();
-app.UseCors("ShredlePolicy");
 app.UseIpRateLimiting();
 app.UseAuthorization();
 app.MapControllers();
