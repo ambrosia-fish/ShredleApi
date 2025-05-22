@@ -65,6 +65,29 @@ builder.Services.AddScoped<GuessValidationService>();
 
 var app = builder.Build();
 
+// Debug CORS middleware
+app.Use(async (context, next) =>
+{
+    var origin = context.Request.Headers["Origin"].FirstOrDefault();
+    var method = context.Request.Method;
+    var path = context.Request.Path;
+    
+    Console.WriteLine($"=== CORS DEBUG ===");
+    Console.WriteLine($"Method: {method}");
+    Console.WriteLine($"Path: {path}");
+    Console.WriteLine($"Origin: {origin}");
+    Console.WriteLine($"Request Headers: {string.Join(", ", context.Request.Headers.Keys)}");
+    Console.WriteLine($"==================");
+    
+    await next();
+    
+    var responseHeaders = string.Join(", ", context.Response.Headers.Keys);
+    Console.WriteLine($"=== CORS RESPONSE ===");
+    Console.WriteLine($"Response Headers: {responseHeaders}");
+    Console.WriteLine($"Access-Control-Allow-Origin: {context.Response.Headers["Access-Control-Allow-Origin"]}");
+    Console.WriteLine($"=====================");
+});
+
 // Configure the HTTP request pipeline
 if (app.Environment.IsDevelopment())
 {
