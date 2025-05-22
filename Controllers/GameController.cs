@@ -35,5 +35,32 @@ namespace ShredleApi.Controllers
 
             return Ok(response);
         }
+
+        [HttpGet("daily-test")]
+        public async Task<ActionResult<GameResponse>> GetDailyTestGame([FromQuery] string passcode)
+        {
+            var adminKey = Environment.GetEnvironmentVariable("ADMIN_KEY");
+            
+            if (string.IsNullOrEmpty(passcode) || passcode != adminKey)
+            {
+                return Unauthorized("Invalid admin key");
+            }
+
+            var game = await _gameService.GetDailyTestGameAsync();
+            
+            if (game == null)
+            {
+                return NotFound("No test game available for today");
+            }
+
+            var response = new GameResponse
+            {
+                Id = game.Id,
+                Date = game.Date,
+                SoloId = game.SoloId
+            };
+
+            return Ok(response);
+        }
     }
 }
