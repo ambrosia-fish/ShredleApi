@@ -18,5 +18,11 @@ namespace ShredleApi.Services
             var today = DateTime.UtcNow.Date;
             return await _repository.GetGameByDateAsync(today);
         }
+
+        public async Task<Game?> GetDailyTestGameAsync()
+        {
+            var today = DateTime.UtcNow.Date;
+            return await _repository.GetTestGameByDateAsync(today);
+        }
     }
 }
