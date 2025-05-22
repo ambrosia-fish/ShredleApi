@@ -22,19 +22,17 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("ShredlePolicy", policy =>
     {
-        var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-                           ?? new[] { 
-                               "https://shredle-app.vercel.app", 
-                               "https://shredle.feztech.io", 
-                               "https://ca11-68-0-249-64.ngrok-free.app", 
-                               "http://localhost:5173" 
-                           };
-        
-        policy.WithOrigins(allowedOrigins)
-              .AllowAnyMethod()
-              .AllowAnyHeader();
+        policy.WithOrigins(
+                "https://shredle-app.vercel.app", 
+                "https://shredle.feztech.io", 
+                "https://ca11-68-0-249-64.ngrok-free.app", 
+                "http://localhost:5173"
+            )
+            .AllowAnyMethod()
+            .AllowAnyHeader();
     });
 });
+This removes the c
 
 // Configure Rate Limiting
 builder.Services.AddMemoryCache();
