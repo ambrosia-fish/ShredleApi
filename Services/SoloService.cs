@@ -1,21 +1,20 @@
-// Services/SoloService.cs
 using ShredleApi.Models;
-using ShredleApi.Data;
+using ShredleApi.Data.Repositories;
 
 namespace ShredleApi.Services
 {
     public class SoloService
     {
-        private readonly SupabaseRepository _repository;
+        private readonly ISoloRepository _soloRepository;
 
-        public SoloService(SupabaseRepository repository)
+        public SoloService(ISoloRepository soloRepository)
         {
-            _repository = repository;
+            _soloRepository = soloRepository;
         }
 
         public async Task<Solo?> GetSoloByIdAsync(int id)
         {
-            return await _repository.GetSoloByIdAsync(id);
+            return await _soloRepository.GetByIdAsync(id);
         }
     }
 }
