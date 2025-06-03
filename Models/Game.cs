@@ -1,19 +1,17 @@
-// Models/Game.cs
-using Supabase.Postgrest.Attributes;
-using Supabase.Postgrest.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShredleApi.Models
 {
-    [Table("games")]
-    public class Game : BaseModel
+    public class Game
     {
-        [PrimaryKey("id")]
-        public string Id { get; set; } = string.Empty;
+        public int Id { get; set; }
         
-        [Column("date")]
+        [Required]
         public DateTime Date { get; set; }
         
-        [Column("solo_id")]
         public int SoloId { get; set; }
+        
+        // Navigation property
+        public Solo Solo { get; set; } = null!;
     }
 }
