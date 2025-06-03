@@ -1,9 +1,8 @@
-// Models/ApiResponses.cs
 namespace ShredleApi.Models
 {
     public class GameResponse
     {
-        public string Id { get; set; } = string.Empty;
+        public int Id { get; set; }
         public DateTime Date { get; set; }
         public int SoloId { get; set; }
     }
