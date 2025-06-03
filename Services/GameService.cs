@@ -1,28 +1,21 @@
-// Services/GameService.cs
 using ShredleApi.Models;
-using ShredleApi.Data;
+using ShredleApi.Data.Repositories;
 
 namespace ShredleApi.Services
 {
     public class GameService
     {
-        private readonly SupabaseRepository _repository;
+        private readonly IGameRepository _gameRepository;
 
-        public GameService(SupabaseRepository repository)
+        public GameService(IGameRepository gameRepository)
         {
-            _repository = repository;
+            _gameRepository = gameRepository;
         }
 
         public async Task<Game?> GetDailyGameAsync()
         {
             var today = DateTime.UtcNow.Date;
-            return await _repository.GetGameByDateAsync(today);
-        }
-
-        public async Task<Game?> GetDailyTestGameAsync()
-        {
-            var today = DateTime.UtcNow.Date;
-            return await _repository.GetTestGameByDateAsync(today);
+            return await _gameRepository.GetByDateAsync(today);
         }
     }
 }

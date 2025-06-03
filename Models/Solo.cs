@@ -1,52 +1,41 @@
-// Models/Solo.cs
-using Supabase.Postgrest.Attributes;
-using Supabase.Postgrest.Models;
+using System.ComponentModel.DataAnnotations;
 
 namespace ShredleApi.Models
 {
-    [Table("solos")]
-    public class Solo : BaseModel
+    public class Solo
     {
-        [PrimaryKey("id")]
         public int Id { get; set; }
         
-        [Column("title")]
+        [Required]
+        [MaxLength(200)]
         public string Title { get; set; } = string.Empty;
         
-        [Column("artist")]
+        [Required]
+        [MaxLength(200)]
         public string Artist { get; set; } = string.Empty;
         
-        [Column("spotify_id")]
+        [Required]
+        [MaxLength(100)]
         public string SpotifyId { get; set; } = string.Empty;
         
-        [Column("start_time_clip1")]
         public double StartTimeClip1 { get; set; }
-        
-        [Column("end_time_clip1")]
         public double EndTimeClip1 { get; set; }
-        
-        [Column("start_time_clip2")]
         public double StartTimeClip2 { get; set; }
-        
-        [Column("end_time_clip2")]
         public double EndTimeClip2 { get; set; }
-        
-        [Column("start_time_clip3")]
         public double StartTimeClip3 { get; set; }
-        
-        [Column("end_time_clip3")]
         public double EndTimeClip3 { get; set; }
-        
-        [Column("start_time_clip4")]
         public double StartTimeClip4 { get; set; }
-        
-        [Column("end_time_clip4")]
         public double EndTimeClip4 { get; set; }
         
-        [Column("guitarist")]
+        [Required]
+        [MaxLength(200)]
         public string Guitarist { get; set; } = string.Empty;
         
-        [Column("hint")]
+        [Required]
+        [MaxLength(500)]
         public string Hint { get; set; } = string.Empty;
+        
+        // Navigation property
+        public ICollection<Game> Games { get; set; } = new List<Game>();
     }
 }
