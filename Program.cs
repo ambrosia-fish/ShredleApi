@@ -1,5 +1,7 @@
 using AspNetCoreRateLimit;
+using Microsoft.EntityFrameworkCore;
 using ShredleApi.Data;
+using ShredleApi.Data.Repositories;
 using ShredleApi.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -45,24 +47,49 @@ builder.Services.AddSingleton<IRateLimitConfiguration, RateLimitConfiguration>()
 // Register HttpClient
 builder.Services.AddHttpClient();
 
-// Configure Supabase
-var supabaseUrl = builder.Configuration["Supabase:Url"] ?? throw new InvalidOperationException("Supabase URL not configured");
-var supabaseKey = builder.Configuration["Supabase:Key"] ?? throw new InvalidOperationException("Supabase Key not configured");
-builder.Services.AddScoped<Supabase.Client>(provider => 
-    new Supabase.Client(supabaseUrl, supabaseKey));
+// Configure Entity Framework with PostgreSQL
+var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL") 
+    ?? Environment.GetEnvironmentVariable("CONNECTION_STRING")
+    ?? builder.Configuration.GetConnectionString("DefaultConnection");
+
+if (string.IsNullOrEmpty(connectionString))
+{
+    throw new InvalidOperationException("Database connection string not configured");
+}
+
+// Parse DATABASE_URL if it's in Heroku format
+if (connectionString.StartsWith("postgres://"))
+{
+    var uri = new Uri(connectionString);
+    var userInfo = uri.UserInfo.Split(':');
+    connectionString = $"Host={uri.Host};Port={uri.Port};Database={uri.AbsolutePath.Trim('/')};Username={userInfo[0]};Password={userInfo[1]};SSL Mode=Require;Trust Server Certificate=true";
+}
+
+builder.Services.AddDbContext<ShredleDbContext>(options =>
+    options.UseNpgsql(connectionString));
 
 // Configure OpenAI
 var openAiKey = builder.Configuration["OpenAI:ApiKey"] ?? throw new InvalidOperationException("OpenAI API Key not configured");
 builder.Services.AddScoped<OpenAI.Chat.ChatClient>(provider => 
     new OpenAI.OpenAIClient(openAiKey).GetChatClient("gpt-3.5-turbo"));
 
-// Register our services
-builder.Services.AddScoped<SupabaseRepository>();
+// Register repositories
+builder.Services.AddScoped<IGameRepository, GameRepository>();
+builder.Services.AddScoped<ISoloRepository, SoloRepository>();
+
+// Register services
 builder.Services.AddScoped<GameService>();
 builder.Services.AddScoped<SoloService>();
 builder.Services.AddScoped<GuessValidationService>();
 
 var app = builder.Build();
+
+// Apply migrations on startup
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<ShredleDbContext>();
+    dbContext.Database.Migrate();
+}
 
 // Debug CORS middleware
 app.Use(async (context, next) =>
@@ -84,7 +111,7 @@ app.Use(async (context, next) =>
     Console.WriteLine($"=== CORS RESPONSE ===");
     Console.WriteLine($"Response Headers: {responseHeaders}");
     Console.WriteLine($"Access-Control-Allow-Origin: {context.Response.Headers["Access-Control-Allow-Origin"]}");
-    Console.WriteLine($"=====================");
+    Console.WriteLine($"====================");
 });
 
 // Configure the HTTP request pipeline
